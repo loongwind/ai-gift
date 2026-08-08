@@ -1,0 +1,2380 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AIGift · AI 礼物推荐小程序高保真原型</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   AIGift — AI 礼物推荐小程序高保真原型
+   Design system: human-approachable (warm coral accent for gifting)
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── palette ── */
+  --bg:        oklch(98% 0.004 60);
+  --surface:   oklch(100% 0 0);
+  --fg:        oklch(22% 0.02 30);
+  --muted:     oklch(52% 0.016 30);
+  --border:    oklch(90% 0.006 60);
+  --accent:    oklch(62% 0.18 28);    /* warm coral */
+  --accent-2:  oklch(58% 0.12 170);   /* teal — secondary domain accent */
+  --warn:      oklch(62% 0.14 50);    /* amber for quota alerts */
+  --success:   oklch(60% 0.14 150);
+  --danger:    oklch(58% 0.16 25);
+
+  --accent-soft:  color-mix(in oklch, var(--accent) 12%, transparent);
+  --accent2-soft: color-mix(in oklch, var(--accent-2) 12%, transparent);
+  --warn-soft:    color-mix(in oklch, var(--warn) 14%, transparent);
+  --fg-soft:      color-mix(in oklch, var(--fg) 5%, transparent);
+
+  /* ── type ── */
+  --font-display: 'PingFang SC', 'Avenir Next', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'SF Pro Text', system-ui, sans-serif;
+  --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* ── scale ── */
+  --fs-h1:    26px;
+  --fs-h2:    20px;
+  --fs-h3:    16px;
+  --fs-lead:  15px;
+  --fs-body:  14px;
+  --fs-meta:  12px;
+  --fs-mini:  11px;
+
+  /* ── spacing ── */
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 16px;
+  --gap-xl: 24px;
+  --gap-2xl: 32px;
+
+  /* ── radius ── */
+  --radius:     10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+
+  /* ── phone dimensions ── */
+  --phone-w: 390px;
+  --phone-h: 844px;
+}
+
+/* ═══ reset ═══ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: oklch(30% 0.01 30);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+img, svg { display: block; max-width: 100%; }
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font: inherit; }
+p { margin: 0; text-wrap: pretty; }
+h1,h2,h3,h4 { margin: 0; text-wrap: balance; }
+
+/* ═══ phone frame ═══ */
+.phone {
+  width: var(--phone-w);
+  height: var(--phone-h);
+  background: var(--bg);
+  border-radius: 55px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 12px oklch(15% 0.01 30),
+    0 0 0 13px oklch(40% 0.02 30),
+    0 40px 80px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+/* dynamic island */
+.dynamic-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: oklch(8% 0.01 30);
+  border-radius: 20px;
+  z-index: 100;
+}
+
+/* status bar */
+.status-bar {
+  height: 54px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px 0 32px;
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  color: var(--fg);
+  z-index: 10;
+}
+.status-bar-right { display: flex; align-items: center; gap: 5px; }
+.status-bar svg { width: 14px; height: 14px; }
+
+/* scrollable content area */
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scrollbar-width: none;
+}
+.app-content::-webkit-scrollbar { display: none; }
+
+/* page system */
+.page { display: none; padding-bottom: 90px; }
+.page.active { display: block; }
+
+/* ═══ top header ═══ */
+.app-header {
+  padding: 0 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-header h1 {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.app-header .header-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), oklch(65% 0.15 40));
+  display: grid; place-items: center;
+  font-size: 13px;
+  color: white;
+  font-weight: 600;
+}
+
+/* ═══ quota bar ═══ */
+.quota-bar {
+  margin: 0 20px 16px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent2-soft));
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.quota-info { display: flex; align-items: center; gap: 6px; font-size: var(--fs-meta); }
+.quota-info .quota-num {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.quota-info .quota-label { color: var(--muted); }
+.quota-bar .btn-replenish {
+  padding: 5px 12px;
+  background: var(--accent);
+  color: white;
+  border-radius: 999px;
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ═══ section title ═══ */
+.section-title {
+  padding: 0 20px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-title h2 {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.section-title .link-more {
+  font-size: var(--fs-meta);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ═══ recipient horizontal scroll ═══ */
+.recipient-scroll {
+  display: flex;
+  gap: 10px;
+  padding: 0 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 20px;
+}
+.recipient-scroll::-webkit-scrollbar { display: none; }
+.recipient-chip {
+  flex-shrink: 0;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.recipient-avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 20px;
+  font-weight: 600;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+.recipient-chip.selected .recipient-avatar {
+  border-color: var(--accent);
+}
+.recipient-chip .recipient-name {
+  font-size: var(--fs-mini);
+  color: var(--muted);
+  max-width: 68px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recipient-chip.selected .recipient-name { color: var(--accent); font-weight: 600; }
+.recipient-add .recipient-avatar {
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+/* ═══ scenario templates ═══ */
+.template-scroll {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 20px;
+}
+.template-scroll::-webkit-scrollbar { display: none; }
+.template-chip {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.template-chip .tpl-icon {
+  width: 14px; height: 14px;
+  display: grid; place-items: center;
+}
+.template-chip .tpl-icon svg { width: 14px; height: 14px; }
+
+/* ═══ form card ═══ */
+.form-card {
+  margin: 0 20px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.form-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.form-section:last-child { border-bottom: none; }
+.form-section-title {
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  gap: 12px;
+}
+.form-label {
+  font-size: var(--fs-body);
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.form-label .req { color: var(--danger); font-size: 10px; }
+.form-label .opt { color: var(--muted); font-size: var(--fs-mini); }
+.form-value {
+  font-size: var(--fs-body);
+  color: var(--muted);
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.form-value.placeholder { color: oklch(70% 0.01 30); }
+.form-value .arrow { width: 12px; height: 12px; opacity: 0.4; }
+
+/* tag selector */
+.tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+.tag-item {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--fs-mini);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tag-item.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* completeness bar */
+.completeness {
+  margin: 0 20px 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+.completeness-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.completeness-label { font-size: var(--fs-meta); color: var(--muted); }
+.completeness-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  color: var(--accent);
+}
+.completeness-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.completeness-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.completeness-hint {
+  font-size: var(--fs-mini);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.completeness-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-mini);
+  font-weight: 600;
+}
+
+/* ═══ bottom CTA ═══ */
+.bottom-cta {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 20px 8px;
+  background: color-mix(in oklch, var(--bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+}
+.generate-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.05s ease;
+}
+.generate-btn:active { transform: scale(0.98); }
+.generate-btn.active {
+  background: var(--accent);
+  color: white;
+}
+.generate-btn.disabled {
+  background: var(--border);
+  color: oklch(65% 0.01 30);
+}
+.generate-btn .sparkle { width: 16px; height: 16px; }
+.banner-ad {
+  margin-top: 6px;
+  height: 42px;
+  background: var(--fg-soft);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-mini);
+  color: oklch(65% 0.01 30);
+  gap: 4px;
+}
+.banner-ad .ad-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+/* ═══ tabbar ═══ */
+.tabbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 83px;
+  background: color-mix(in oklch, var(--bg) 92%, transparent);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding-bottom: 24px;
+  z-index: 50;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: oklch(60% 0.01 30);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tab-item svg { width: 24px; height: 24px; }
+.tab-item span { font-size: 10px; font-weight: 500; }
+.tab-item.active { color: var(--accent); }
+
+/* ═══ result page ═══ */
+.result-header {
+  padding: 8px 20px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.result-header .back-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.result-header .back-btn svg { width: 16px; height: 16px; }
+.result-header h1 { font-size: var(--fs-h2); font-weight: 700; }
+.result-recipient-info {
+  margin: 0 20px 16px;
+  padding: 12px 14px;
+  background: var(--accent2-soft);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-meta);
+}
+.result-recipient-info .avatar-sm {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+.result-recipient-info .info-text { flex: 1; }
+.result-recipient-info .info-name { font-weight: 600; font-size: var(--fs-body); }
+.result-recipient-info .info-meta { color: var(--muted); font-size: var(--fs-mini); }
+
+/* gift card */
+.gift-card {
+  margin: 0 20px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.gift-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.gift-name { font-size: var(--fs-h3); font-weight: 600; line-height: 1.3; }
+.gift-match {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-mini);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.gift-match.high { background: color-mix(in oklch, var(--success) 15%, transparent); color: var(--success); }
+.gift-match.mid  { background: var(--warn-soft); color: var(--warn); }
+.gift-reason {
+  font-size: var(--fs-meta);
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.gift-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.gift-tag {
+  padding: 2px 8px;
+  background: var(--fg-soft);
+  border-radius: 999px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.gift-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.gift-meta-item { display: flex; align-items: center; gap: 3px; font-size: var(--fs-mini); color: var(--muted); }
+.gift-meta-item svg { width: 12px; height: 12px; }
+.gift-meta-item .price { font-family: var(--font-mono); font-weight: 600; color: var(--fg); }
+.gift-actions {
+  display: flex;
+  gap: 8px;
+}
+.gift-action-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius);
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.12s;
+}
+.gift-action-btn svg { width: 14px; height: 14px; }
+.gift-action-accept { background: var(--accent-soft); color: var(--accent); }
+.gift-action-accept.acted { background: var(--accent); color: white; }
+.gift-action-reject { background: var(--fg-soft); color: var(--muted); }
+.gift-action-reject.acted { background: oklch(55% 0.01 30); color: white; }
+.gift-action-fav { width: 36px; flex: none; background: var(--fg-soft); display: grid; place-items: center; }
+.gift-action-fav.acted { color: var(--warn); }
+.gift-action-fav.acted svg { fill: var(--warn); }
+
+.result-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 20px 8px;
+  background: color-mix(in oklch, var(--bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+}
+.result-footer-btn {
+  flex: 1;
+  padding: 11px;
+  border-radius: var(--radius);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.result-footer-btn svg { width: 16px; height: 16px; }
+.btn-refresh { background: var(--surface); border: 1px solid var(--border); color: var(--fg); }
+.btn-share { background: var(--accent-2); color: white; }
+
+/* ═══ recipients page ═══ */
+.recipient-card {
+  margin: 0 20px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+.recipient-card:active { border-color: var(--accent); }
+.recipient-card-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+.recipient-card-info { flex: 1; min-width: 0; }
+.recipient-card-name {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.recipient-card-meta {
+  font-size: var(--fs-mini);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.recipient-card-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+.recipient-card-arrow { color: oklch(70% 0.01 30); }
+.recipient-card-arrow svg { width: 14px; height: 14px; }
+
+.recipient-card-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+/* add new recipient */
+.add-recipient-btn {
+  margin: 0 20px;
+  padding: 14px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--accent);
+  width: calc(100% - 40px);
+}
+
+/* ═══ history page ═══ */
+.history-group { margin-bottom: 20px; }
+.history-group-header {
+  padding: 0 20px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.history-group-header .avatar-xs {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+}
+.history-group-header h3 { font-size: var(--fs-body); font-weight: 600; }
+.history-group-header .date { font-size: var(--fs-mini); color: var(--muted); margin-left: auto; }
+
+.history-card {
+  margin: 0 20px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.history-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.history-card-occasion {
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.history-card-stats {
+  font-size: var(--fs-mini);
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.history-gifts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.history-gift-chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.history-gift-chip.accepted { background: color-mix(in oklch, var(--success) 12%, transparent); color: var(--success); }
+.history-gift-chip.rejected { background: var(--fg-soft); color: var(--muted); text-decoration: line-through; }
+.history-gift-chip.pending { background: var(--warn-soft); color: var(--warn); }
+.history-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.history-card-time { font-size: 10px; color: var(--muted); }
+.history-card-reuse {
+  font-size: var(--fs-mini);
+  color: var(--accent);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ═══ profile page ═══ */
+.profile-header {
+  padding: 0 20px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.profile-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), oklch(65% 0.15 40));
+  display: grid; place-items: center;
+  font-size: 24px;
+  color: white;
+  font-weight: 600;
+}
+.profile-name { font-size: var(--fs-h2); font-weight: 700; }
+.profile-id { font-size: var(--fs-mini); color: var(--muted); font-family: var(--font-mono); }
+
+/* quota card */
+.quota-card {
+  margin: 0 20px 20px;
+  background: linear-gradient(135deg, var(--accent), oklch(58% 0.16 20));
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  color: white;
+}
+.quota-card-top { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
+.quota-card-num { font-size: 36px; font-weight: 800; font-family: var(--font-mono); line-height: 1; }
+.quota-card-unit { font-size: var(--fs-body); opacity: 0.8; }
+.quota-card-label { font-size: var(--fs-meta); opacity: 0.8; }
+.quota-card-actions { display: flex; gap: 8px; }
+.quota-card-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: white;
+}
+.quota-card-btn svg { width: 14px; height: 14px; }
+
+/* profile menu */
+.profile-menu {
+  margin: 0 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.menu-item {
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.menu-item:last-child { border-bottom: none; }
+.menu-item:active { background: var(--fg-soft); }
+.menu-item-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.menu-item-icon svg { width: 16px; height: 16px; }
+.menu-item-label { flex: 1; font-size: var(--fs-body); }
+.menu-item-value { font-size: var(--fs-meta); color: var(--muted); }
+.menu-item-arrow svg { width: 14px; height: 14px; color: oklch(70% 0.01 30); }
+
+/* reminder card */
+.reminder-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.reminder-item:last-child { border-bottom: none; }
+.reminder-date {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.reminder-date .day { font-size: var(--fs-h3); font-weight: 700; font-family: var(--font-mono); line-height: 1; }
+.reminder-date .month { font-size: 9px; }
+.reminder-info { flex: 1; }
+.reminder-name { font-size: var(--fs-body); font-weight: 500; }
+.reminder-occasion { font-size: var(--fs-mini); color: var(--muted); }
+.reminder-countdown {
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ═══ modal ═══ */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-sheet {
+  width: 100%;
+  background: var(--bg);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 20px 20px 40px;
+  max-height: 80%;
+  overflow-y: auto;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+.modal-title { font-size: var(--fs-h2); font-weight: 700; text-align: center; margin-bottom: 6px; }
+.modal-sub { font-size: var(--fs-meta); color: var(--muted); text-align: center; margin-bottom: 20px; }
+
+.quota-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+.quota-option:active { border-color: var(--accent); }
+.quota-option-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.quota-option-icon svg { width: 20px; height: 20px; }
+.quota-option-info { flex: 1; }
+.quota-option-title { font-size: var(--fs-body); font-weight: 600; }
+.quota-option-desc { font-size: var(--fs-mini); color: var(--muted); }
+.quota-option-amount {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+
+/* ═══ loading ═══ */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  z-index: 300;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.loading-overlay.show { display: flex; }
+.loading-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: var(--fs-body); color: var(--muted); text-align: center; }
+.loading-dots { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--accent); }
+
+/* ═══ toast ═══ */
+.toast {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: oklch(20% 0.02 30);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  z-index: 400;
+  opacity: 0;
+  transition: all 0.25s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ═══ recipient edit page ═══ */
+.edit-page { padding-bottom: 90px; }
+.edit-section {
+  margin: 0 20px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.edit-section-header {
+  padding: 12px 16px 8px;
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  color: var(--muted);
+}
+.edit-row {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  gap: 12px;
+}
+.edit-row:first-of-type { border-top: none; }
+.edit-label { font-size: var(--fs-body); flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+.edit-label .req { color: var(--danger); }
+.edit-input {
+  flex: 1;
+  text-align: right;
+  border: none;
+  background: none;
+  font-size: var(--fs-body);
+  color: var(--fg);
+  outline: none;
+}
+.edit-input::placeholder { color: oklch(70% 0.01 30); }
+
+/* select pills */
+.pill-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px 12px;
+}
+.pill-option {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--fs-mini);
+  color: var(--muted);
+  cursor: pointer;
+}
+.pill-option.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.save-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 20px 28px;
+  background: color-mix(in oklch, var(--bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+}
+.save-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* animation */
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="dynamic-island"></div>
+
+  <!-- status bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="status-bar-right">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 8h20v3H2zm0 5h20v3H2zm0 5h20v3H2z" opacity=".3"/><path d="M2 8h18v3H2zm0 5h14v3H2zm0 5h10v3H2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C7 3 2.7 5.3 0 9l2 2c2.5-3 6-5 10-5s7.5 2 10 5l2-2c-2.7-3.7-7-6-12-6zm0 4c-3.3 0-6.3 1.4-8.5 3.5L5.5 12C7.3 10.4 9.5 9.5 12 9.5s4.7.9 6.5 2.5l2-2.5C18.3 8.4 15.3 7 12 7zm0 4c-1.8 0-3.4.7-4.6 1.8L9.4 15c.7-.6 1.6-1 2.6-1s1.9.4 2.6 1l2-2.2C15.4 11.7 13.8 11 12 11z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="14" height="6" rx="1" fill="currentColor"/><rect x="21" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PAGE: RECOMMEND (推荐首页)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="app-content">
+  <div class="page active" id="page-recommend" data-od-id="page-recommend">
+
+    <!-- header -->
+    <div class="app-header">
+      <div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:2px;">AIGift</p>
+        <h1>智能礼物推荐</h1>
+      </div>
+      <div class="header-avatar" onclick="switchTab('profile')">L</div>
+    </div>
+
+    <!-- quota bar -->
+    <div class="quota-bar" data-od-id="quota-bar">
+      <div class="quota-info">
+        <span class="quota-num num" id="quota-num">3</span>
+        <span class="quota-label">次推荐机会</span>
+      </div>
+      <button class="btn-replenish" onclick="showQuotaModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        补充额度
+      </button>
+    </div>
+
+    <!-- recipient select -->
+    <div class="section-title">
+      <h2>选择送礼对象</h2>
+    </div>
+    <div class="recipient-scroll" data-od-id="recipient-select">
+      <div class="recipient-chip selected" onclick="selectRecipient(this)">
+        <div class="recipient-avatar" style="background:linear-gradient(135deg,oklch(65% 0.15 0),oklch(60% 0.18 20));">妈</div>
+        <span class="recipient-name">妈妈</span>
+      </div>
+      <div class="recipient-chip" onclick="selectRecipient(this)">
+        <div class="recipient-avatar" style="background:linear-gradient(135deg,oklch(60% 0.12 260),oklch(55% 0.14 280));color:white;">晴</div>
+        <span class="recipient-name">女朋友</span>
+      </div>
+      <div class="recipient-chip" onclick="selectRecipient(this)">
+        <div class="recipient-avatar" style="background:linear-gradient(135deg,oklch(60% 0.1 160),oklch(55% 0.12 180));color:white;">王</div>
+        <span class="recipient-name">王总</span>
+      </div>
+      <div class="recipient-chip" onclick="selectRecipient(this)">
+        <div class="recipient-avatar" style="background:linear-gradient(135deg,oklch(60% 0.1 90),oklch(55% 0.12 110));color:white;">爸</div>
+        <span class="recipient-name">爸爸</span>
+      </div>
+      <div class="recipient-chip recipient-add" onclick="switchTab('recipients')">
+        <div class="recipient-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <span class="recipient-name">新建</span>
+      </div>
+    </div>
+
+    <!-- scenario templates -->
+    <div class="section-title">
+      <h2>快捷场景</h2>
+      <span class="link-more" onclick="showToast('更多场景模板开发中')">全部</span>
+    </div>
+    <div class="template-scroll" data-od-id="scenario-templates">
+      <div class="template-chip" style="background:oklch(62% 0.18 28);color:white;" onclick="applyTemplate(this,'birthday')">
+        <span class="tpl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 10h14v10H5zM5 10V7a2 2 0 012-2h10a2 2 0 012 2v3M12 2v3M9 14h6"/></svg></span>
+        生日
+      </div>
+      <div class="template-chip" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);" onclick="applyTemplate(this,'anniversary')">
+        <span class="tpl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg></span>
+        纪念日
+      </div>
+      <div class="template-chip" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);" onclick="applyTemplate(this,'festival')">
+        <span class="tpl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-2)" stroke-width="1.8"><path d="M12 2v6M9 5h6M5 11h14l-1 9H6zM8 15h8M8 18h5"/></svg></span>
+        节日
+      </div>
+      <div class="template-chip" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);" onclick="applyTemplate(this,'thanks')">
+        <span class="tpl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M12 4l3 6 6 .9-4.5 4.3 1 6.3-5.5-3-5.5 3 1-6.3L3 10.9 9 10z"/></svg></span>
+        感谢
+      </div>
+      <div class="template-chip" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);" onclick="applyTemplate(this,'business')">
+        <span class="tpl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span>
+        商务
+      </div>
+      <div class="template-chip" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);" onclick="applyTemplate(this,'visit')">
+        <span class="tpl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-2)" stroke-width="1.8"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg></span>
+        探望
+      </div>
+    </div>
+
+    <!-- form: object profile -->
+    <div class="form-card" data-od-id="form-profile">
+      <div class="form-section">
+        <div class="form-section-title">对象画像</div>
+        <div class="form-row">
+          <span class="form-label">昵称 <span class="req">*</span></span>
+          <span class="form-value">妈妈</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">性别 <span class="req">*</span></span>
+          <span class="form-value">女</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">年龄段 <span class="req">*</span></span>
+          <span class="form-value">中老年</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">关系 <span class="req">*</span></span>
+          <span class="form-value">父母</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">爱好 <span class="opt">+精准度</span></span>
+          <div class="tag-group" style="justify-content:flex-end;">
+            <span class="tag-item active">园艺</span>
+            <span class="tag-item active">茶</span>
+            <span class="tag-item active">烹饪</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">性格 <span class="opt">+精准度</span></span>
+          <span class="form-value">务实 · 传统</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">物质偏好 <span class="opt">+精准度</span></span>
+          <span class="form-value">实用型 · 品质型</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label" style="color:var(--danger);">禁忌/不喜欢</span>
+          <span class="form-value" style="color:var(--danger);">不喝咖啡</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- form: recommend params -->
+    <div class="form-card" data-od-id="form-params">
+      <div class="form-section">
+        <div class="form-section-title">推荐参数</div>
+        <div class="form-row">
+          <span class="form-label">送礼场合 <span class="req">*</span></span>
+          <span class="form-value">生日</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">预算区间 <span class="req">*</span></span>
+          <span class="form-value" style="color:var(--accent);font-weight:600;">300-500 元</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">送达方式</span>
+          <span class="form-value">当面</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">推荐条数</span>
+          <span class="form-value">5 条</span>
+        </div>
+        <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span class="form-label">个人想法 <span class="opt">+精准度</span></span>
+          <span style="font-size:var(--fs-mini);color:var(--muted);line-height:1.5;">妈妈平时喜欢泡茶，最近说老茶壶该换了，想送个品质好的</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- completeness -->
+    <div class="completeness" data-od-id="completeness">
+      <div class="completeness-top">
+        <span class="completeness-label">推荐完整度</span>
+        <span class="completeness-value num">72<span style="font-size:14px;">%</span></span>
+      </div>
+      <div class="completeness-bar">
+        <div class="completeness-fill" style="width:72%;background:var(--accent);"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="completeness-hint">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>
+          再填写 2 项（职业、MBTI），准确度将显著提升
+        </span>
+        <span class="completeness-badge" style="background:var(--accent-soft);color:var(--accent);">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 21 12 17l-5.5 4L8 13.5 3 9l6.5-.5z"/></svg>
+          精准推荐
+        </span>
+      </div>
+    </div>
+
+    <!-- bottom CTA -->
+    <div class="bottom-cta">
+      <button class="generate-btn active" onclick="generateRecommendations()">
+        <svg class="sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M3 12h3M18 12h3M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        生成 AI 推荐
+      </button>
+      <div class="banner-ad">
+        <span class="ad-tag">AD</span>
+        <span>广告位 · Banner</span>
+      </div>
+    </div>
+
+  </div><!-- /page-recommend -->
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PAGE: RESULT (推荐结果)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-result" data-od-id="page-result">
+    <div class="result-header">
+      <div class="back-btn" onclick="switchPage('page-recommend')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      <h1>推荐结果</h1>
+    </div>
+
+    <div class="result-recipient-info">
+      <div class="avatar-sm" style="background:linear-gradient(135deg,oklch(65% 0.15 0),oklch(60% 0.18 20));">妈</div>
+      <div class="info-text">
+        <div class="info-name">妈妈 · 生日礼物</div>
+        <div class="info-meta">预算 300-500 元 · 当面送达 · 完整度 72%</div>
+      </div>
+      <span class="completeness-badge" style="background:var(--accent-soft);color:var(--accent);">精准</span>
+    </div>
+
+    <!-- gift cards (generated) -->
+    <div id="gift-list">
+      <div class="gift-card fade-in" data-od-id="gift-1">
+        <div class="gift-card-header">
+          <div class="gift-name">紫砂茶壶套装（宜兴原矿）</div>
+          <div class="gift-match high">96分</div>
+        </div>
+        <p class="gift-reason">妈妈爱喝茶且偏好品质型礼物，紫砂壶兼具实用与收藏价值，传统风格契合她的审美。宜兴原矿泥料越用越润，象征岁月沉淀的母爱。</p>
+        <div class="gift-tags">
+          <span class="gift-tag">实用</span>
+          <span class="gift-tag">品质型</span>
+          <span class="gift-tag">传统</span>
+          <span class="gift-tag">茶文化</span>
+        </div>
+        <div class="gift-meta">
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+            <span class="price">¥350-480</span>
+          </div>
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            京东/线下茶城
+          </div>
+        </div>
+        <div class="gift-actions">
+          <button class="gift-action-btn gift-action-accept" onclick="giftFeedback(this,'accepted')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            采纳
+          </button>
+          <button class="gift-action-btn gift-action-reject" onclick="giftFeedback(this,'rejected')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            不采纳
+          </button>
+          <button class="gift-action-btn gift-action-fav" onclick="giftFeedback(this,'favorited')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="gift-card fade-in" data-od-id="gift-2">
+        <div class="gift-card-header">
+          <div class="gift-name">智能足浴盆（恒温按摩）</div>
+          <div class="gift-match high">93分</div>
+        </div>
+        <p class="gift-reason">中老年群体足部护理需求高，这款恒温按摩足浴盆操作简单、安全防护完善，契合妈妈务实性格和居家生活方式，每天都能用得上。</p>
+        <div class="gift-tags">
+          <span class="gift-tag">实用</span>
+          <span class="gift-tag">健康</span>
+          <span class="gift-tag">居家</span>
+        </div>
+        <div class="gift-meta">
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+            <span class="price">¥299-449</span>
+          </div>
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            京东/天猫
+          </div>
+        </div>
+        <div class="gift-actions">
+          <button class="gift-action-btn gift-action-accept" onclick="giftFeedback(this,'accepted')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            采纳
+          </button>
+          <button class="gift-action-btn gift-action-reject" onclick="giftFeedback(this,'rejected')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            不采纳
+          </button>
+          <button class="gift-action-btn gift-action-fav" onclick="giftFeedback(this,'favorited')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="gift-card fade-in" data-od-id="gift-3">
+        <div class="gift-card-header">
+          <div class="gift-name">高端园艺工具套装</div>
+          <div class="gift-match high">91分</div>
+        </div>
+        <p class="gift-reason">妈妈爱好园艺，一套专业的不锈钢园艺工具（修枝剪、铲、耙等）既实用又体现心意。铝合金手柄轻便省力，适合日常阳台花园养护。</p>
+        <div class="gift-tags">
+          <span class="gift-tag">实用</span>
+          <span class="gift-tag">园艺</span>
+          <span class="gift-tag">爱好</span>
+        </div>
+        <div class="gift-meta">
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+            <span class="price">¥280-420</span>
+          </div>
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            京东/淘宝
+          </div>
+        </div>
+        <div class="gift-actions">
+          <button class="gift-action-btn gift-action-accept" onclick="giftFeedback(this,'accepted')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            采纳
+          </button>
+          <button class="gift-action-btn gift-action-reject" onclick="giftFeedback(this,'rejected')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            不采纳
+          </button>
+          <button class="gift-action-btn gift-action-fav" onclick="giftFeedback(this,'favorited')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="gift-card fade-in" data-od-id="gift-4">
+        <div class="gift-card-header">
+          <div class="gift-name">真丝围巾礼盒</div>
+          <div class="gift-match mid">87分</div>
+        </div>
+        <p class="gift-reason">桑蚕丝材质柔软亲肤，传统花纹契合妈妈审美。兼具实用性（日常搭配）和仪式感（精美包装），中老年女性普遍喜爱。</p>
+        <div class="gift-tags">
+          <span class="gift-tag">颜值型</span>
+          <span class="gift-tag">品质型</span>
+          <span class="gift-tag">穿搭</span>
+        </div>
+        <div class="gift-meta">
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+            <span class="price">¥320-460</span>
+          </div>
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            京东/品牌官网
+          </div>
+        </div>
+        <div class="gift-actions">
+          <button class="gift-action-btn gift-action-accept" onclick="giftFeedback(this,'accepted')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            采纳
+          </button>
+          <button class="gift-action-btn gift-action-reject" onclick="giftFeedback(this,'rejected')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            不采纳
+          </button>
+          <button class="gift-action-btn gift-action-fav" onclick="giftFeedback(this,'favorited')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="gift-card fade-in" data-od-id="gift-5">
+        <div class="gift-card-header">
+          <div class="gift-name">高端燕窝礼盒</div>
+          <div class="gift-match mid">84分</div>
+        </div>
+        <p class="gift-reason">天然燕窝滋补养颜，适合中老年女性日常调理。品牌礼盒装仪式感强，适合生日场景。注意选择有溯源认证的产品。</p>
+        <div class="gift-tags">
+          <span class="gift-tag">健康</span>
+          <span class="gift-tag">仪式感</span>
+          <span class="gift-tag">品牌型</span>
+        </div>
+        <div class="gift-meta">
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+            <span class="price">¥380-500</span>
+          </div>
+          <div class="gift-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            天猫/线下药房
+          </div>
+        </div>
+        <div class="gift-actions">
+          <button class="gift-action-btn gift-action-accept" onclick="giftFeedback(this,'accepted')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            采纳
+          </button>
+          <button class="gift-action-btn gift-action-reject" onclick="giftFeedback(this,'rejected')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            不采纳
+          </button>
+          <button class="gift-action-btn gift-action-fav" onclick="giftFeedback(this,'favorited')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- result footer -->
+    <div class="result-footer">
+      <button class="result-footer-btn btn-refresh" onclick="regenerate()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        换一批
+      </button>
+      <button class="result-footer-btn btn-share" onclick="showToast('分享卡片已生成 +2次额度')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        分享得次数
+      </button>
+    </div>
+  </div><!-- /page-result -->
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PAGE: RECIPIENTS (对象列表)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-recipients" data-od-id="page-recipients">
+    <div class="app-header">
+      <h1>送礼对象</h1>
+      <div class="header-avatar" onclick="switchTab('profile')">L</div>
+    </div>
+
+    <div style="margin:0 20px 16px;">
+      <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="搜索对象" style="border:none;background:none;outline:none;font-size:var(--fs-body);flex:1;" />
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h2>共 4 位</h2>
+      <span class="link-more">最近送礼</span>
+    </div>
+
+    <div class="recipient-card" onclick="switchTab('recipient-edit')">
+      <div class="recipient-card-avatar" style="background:linear-gradient(135deg,oklch(65% 0.15 0),oklch(60% 0.18 20));">妈</div>
+      <div class="recipient-card-info">
+        <div class="recipient-card-name">妈妈</div>
+        <div class="recipient-card-meta">
+          <span>女 · 中老年</span>
+          <span class="dot"></span>
+          <span>父母</span>
+          <span class="dot"></span>
+          <span>3次推荐</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <span class="recipient-card-badge" style="background:var(--accent-soft);color:var(--accent);">精准</span>
+        <span style="font-size:10px;color:var(--muted);">8月15日生日</span>
+      </div>
+    </div>
+
+    <div class="recipient-card" onclick="showToast('编辑功能开发中')">
+      <div class="recipient-card-avatar" style="background:linear-gradient(135deg,oklch(60% 0.12 260),oklch(55% 0.14 280));color:white;">晴</div>
+      <div class="recipient-card-info">
+        <div class="recipient-card-name">小晴（女朋友）</div>
+        <div class="recipient-card-meta">
+          <span>女 · 青年</span>
+          <span class="dot"></span>
+          <span>恋人</span>
+          <span class="dot"></span>
+          <span>5次推荐</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <span class="recipient-card-badge" style="background:color-mix(in oklch,var(--accent-2) 12%,transparent);color:var(--accent-2);">高精准</span>
+        <span style="font-size:10px;color:var(--muted);">10月20日纪念日</span>
+      </div>
+    </div>
+
+    <div class="recipient-card" onclick="showToast('编辑功能开发中')">
+      <div class="recipient-card-avatar" style="background:linear-gradient(135deg,oklch(60% 0.1 160),oklch(55% 0.12 180));color:white;">王</div>
+      <div class="recipient-card-info">
+        <div class="recipient-card-name">王总（领导）</div>
+        <div class="recipient-card-meta">
+          <span>男 · 中年</span>
+          <span class="dot"></span>
+          <span>领导</span>
+          <span class="dot"></span>
+          <span>2次推荐</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <span class="recipient-card-badge" style="background:var(--fg-soft);color:var(--muted);">标准</span>
+      </div>
+    </div>
+
+    <div class="recipient-card" onclick="showToast('编辑功能开发中')">
+      <div class="recipient-card-avatar" style="background:linear-gradient(135deg,oklch(60% 0.1 90),oklch(55% 0.12 110));color:white;">爸</div>
+      <div class="recipient-card-info">
+        <div class="recipient-card-name">爸爸</div>
+        <div class="recipient-card-meta">
+          <span>男 · 中老年</span>
+          <span class="dot"></span>
+          <span>父母</span>
+          <span class="dot"></span>
+          <span>1次推荐</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <span class="recipient-card-badge" style="background:var(--accent-soft);color:var(--accent);">精准</span>
+      </div>
+    </div>
+
+    <div style="height:12px;"></div>
+    <button class="add-recipient-btn" onclick="switchTab('recipient-edit')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      新建送礼对象
+    </button>
+  </div><!-- /page-recipients -->
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PAGE: RECIPIENT EDIT (对象编辑)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-recipient-edit" data-od-id="page-recipient-edit">
+    <div class="result-header">
+      <div class="back-btn" onclick="switchTab('recipients')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      <h1>编辑对象</h1>
+    </div>
+
+    <div class="edit-page">
+    <!-- 基础信息 -->
+    <div class="edit-section">
+      <div class="edit-section-header">基础信息</div>
+      <div class="edit-row">
+        <span class="edit-label">昵称 <span class="req">*</span></span>
+        <input class="edit-input" value="妈妈" placeholder="输入称呼" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">性别 <span class="req">*</span></span>
+        <span class="form-value" style="color:var(--accent);">女</span>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">年龄段 <span class="req">*</span></span>
+        <span class="form-value">中老年</span>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">具体年龄</span>
+        <input class="edit-input" value="58" placeholder="选填" type="number" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">生日</span>
+        <span class="form-value">8月15日</span>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">星座</span>
+        <span class="form-value placeholder">狮子座（自动推算）</span>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">MBTI</span>
+        <span class="form-value placeholder">选填</span>
+      </div>
+    </div>
+
+    <!-- 关系 -->
+    <div class="edit-section">
+      <div class="edit-section-header">关系</div>
+      <div class="edit-row">
+        <span class="edit-label">关系类型 <span class="req">*</span></span>
+        <span class="form-value">父母</span>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">亲密程度</span>
+        <span class="form-value">至亲</span>
+      </div>
+    </div>
+
+    <!-- 身份 -->
+    <div class="edit-section">
+      <div class="edit-section-header">身份</div>
+      <div class="edit-row">
+        <span class="edit-label">职业/身份</span>
+        <input class="edit-input" placeholder="选填，如退休教师" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">人生阶段</span>
+        <span class="form-value placeholder">选填</span>
+      </div>
+    </div>
+
+    <!-- 性格 -->
+    <div class="edit-section">
+      <div class="edit-section-header">性格标签</div>
+      <div class="pill-select">
+        <span class="pill-option">内向</span>
+        <span class="pill-option">外向</span>
+        <span class="pill-option">沉稳</span>
+        <span class="pill-option">活泼</span>
+        <span class="pill-option">浪漫</span>
+        <span class="pill-option active">务实</span>
+        <span class="pill-option">文艺</span>
+        <span class="pill-option">极客</span>
+        <span class="pill-option">宅</span>
+        <span class="pill-option">感性</span>
+        <span class="pill-option">理性</span>
+        <span class="pill-option active">传统</span>
+        <span class="pill-option">新潮</span>
+        <span class="pill-option">简约</span>
+        <span class="pill-option active">品质控</span>
+        <span class="pill-option">爱惊喜</span>
+      </div>
+    </div>
+
+    <!-- 兴趣 -->
+    <div class="edit-section">
+      <div class="edit-section-header">爱好标签</div>
+      <div class="pill-select">
+        <span class="pill-option">运动</span>
+        <span class="pill-option">阅读</span>
+        <span class="pill-option">音乐</span>
+        <span class="pill-option">影视</span>
+        <span class="pill-option">游戏</span>
+        <span class="pill-option">旅行</span>
+        <span class="pill-option">美食</span>
+        <span class="pill-option active">烹饪</span>
+        <span class="pill-option">摄影</span>
+        <span class="pill-option active">园艺</span>
+        <span class="pill-option">手工</span>
+        <span class="pill-option">宠物</span>
+        <span class="pill-option">数码</span>
+        <span class="pill-option">美妆</span>
+        <span class="pill-option active">茶酒</span>
+        <span class="pill-option">户外</span>
+        <span class="pill-option">二次元</span>
+      </div>
+    </div>
+
+    <!-- 物质偏好 -->
+    <div class="edit-section">
+      <div class="edit-section-header">物质偏好</div>
+      <div class="pill-select">
+        <span class="pill-option active">实用型</span>
+        <span class="pill-option">体验型</span>
+        <span class="pill-option">仪式感</span>
+        <span class="pill-option">收藏型</span>
+        <span class="pill-option">颜值型</span>
+        <span class="pill-option active">品牌型</span>
+      </div>
+    </div>
+
+    <!-- 雷区 -->
+    <div class="edit-section" style="border-color:color-mix(in oklch,var(--danger) 20%,var(--border));">
+      <div class="edit-section-header" style="color:var(--danger);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:inline;vertical-align:-2px;margin-right:4px;"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0zM12 9v4M12 17h.01"/></svg>
+        禁忌/不喜欢（AI 强约束）
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">不吃/不用</span>
+        <input class="edit-input" value="不喝咖啡" placeholder="如不吃辣" style="color:var(--danger);" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">颜色/数字忌讳</span>
+        <input class="edit-input" placeholder="选填" />
+      </div>
+    </div>
+
+    <!-- 重要日期 -->
+    <div class="edit-section">
+      <div class="edit-section-header">重要日期提醒</div>
+      <div class="edit-row">
+        <span class="edit-label">生日</span>
+        <span class="form-value">
+          <span style="color:var(--accent);">每年 8月15日</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4;"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </div>
+      <div class="edit-row">
+        <span class="edit-label" style="color:var(--accent);">+ 添加日期</span>
+      </div>
+    </div>
+
+    <div style="height:80px;"></div>
+
+    <!-- save bar -->
+    <div class="save-bar">
+      <button class="save-btn" onclick="showToast('已保存');switchTab('recipients');">保存</button>
+    </div>
+    </div>
+  </div><!-- /page-recipient-edit -->
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PAGE: HISTORY (历史)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-history" data-od-id="page-history">
+    <div class="app-header">
+      <h1>推荐历史</h1>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--muted);"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+    </div>
+
+    <!-- filter tabs -->
+    <div style="display:flex;gap:8px;padding:0 20px 16px;">
+      <span style="padding:5px 14px;background:var(--accent);color:white;border-radius:999px;font-size:var(--fs-mini);font-weight:600;">全部</span>
+      <span style="padding:5px 14px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:var(--fs-mini);color:var(--muted);">已采纳</span>
+      <span style="padding:5px 14px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:var(--fs-mini);color:var(--muted);">未采纳</span>
+      <span style="padding:5px 14px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:var(--fs-mini);color:var(--muted);">收藏</span>
+    </div>
+
+    <!-- group: 妈妈 -->
+    <div class="history-group">
+      <div class="history-group-header">
+        <div class="avatar-xs" style="background:linear-gradient(135deg,oklch(65% 0.15 0),oklch(60% 0.18 20));">妈</div>
+        <h3>妈妈</h3>
+        <span class="date">3 次推荐</span>
+      </div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <span class="history-card-occasion">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M5 10h14v10H5zM5 10V7a2 2 0 012-2h10a2 2 0 012 2v3M12 2v3"/></svg>
+            生日 · 300-500元
+          </span>
+          <span class="history-card-stats">采纳 3/5</span>
+        </div>
+        <div class="history-gifts">
+          <span class="history-gift-chip accepted">紫砂茶壶套装</span>
+          <span class="history-gift-chip accepted">智能足浴盆</span>
+          <span class="history-gift-chip accepted">园艺工具套装</span>
+          <span class="history-gift-chip rejected">真丝围巾</span>
+          <span class="history-gift-chip rejected">燕窝礼盒</span>
+        </div>
+        <div class="history-card-bottom">
+          <span class="history-card-time">2026-08-01 09:32 · DeepSeek</span>
+          <span class="history-card-reuse">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            基于此再推荐
+          </span>
+        </div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <span class="history-card-occasion">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-2)" stroke-width="1.8"><path d="M12 2v6M9 5h6M5 11h14l-1 9H6z"/></svg>
+            母亲节 · 200-400元
+          </span>
+          <span class="history-card-stats">采纳 2/5</span>
+        </div>
+        <div class="history-gifts">
+          <span class="history-gift-chip accepted">康乃馨花束</span>
+          <span class="history-gift-chip accepted">按摩仪</span>
+          <span class="history-gift-chip rejected">保健品</span>
+          <span class="history-gift-chip pending">护肤套装</span>
+        </div>
+        <div class="history-card-bottom">
+          <span class="history-card-time">2026-05-08 14:20 · DeepSeek</span>
+          <span class="history-card-reuse">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            基于此再推荐
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- group: 小晴 -->
+    <div class="history-group">
+      <div class="history-group-header">
+        <div class="avatar-xs" style="background:linear-gradient(135deg,oklch(60% 0.12 260),oklch(55% 0.14 280));color:white;">晴</div>
+        <h3>小晴（女朋友）</h3>
+        <span class="date">5 次推荐</span>
+      </div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <span class="history-card-occasion">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/></svg>
+            纪念日 · 500-1000元
+          </span>
+          <span class="history-card-stats">采纳 4/5</span>
+        </div>
+        <div class="history-gifts">
+          <span class="history-gift-chip accepted">DIY手工相册</span>
+          <span class="history-gift-chip accepted">情侣SPA券</span>
+          <span class="history-gift-chip accepted">香水礼盒</span>
+          <span class="history-gift-chip accepted">手写信</span>
+          <span class="history-gift-chip rejected">手机壳</span>
+        </div>
+        <div class="history-card-bottom">
+          <span class="history-card-time">2026-07-20 19:15 · DeepSeek</span>
+          <span class="history-card-reuse">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            基于此再推荐
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- group: 王总 -->
+    <div class="history-group">
+      <div class="history-group-header">
+        <div class="avatar-xs" style="background:linear-gradient(135deg,oklch(60% 0.1 160),oklch(55% 0.12 180));color:white;">王</div>
+        <h3>王总（领导）</h3>
+        <span class="date">2 次推荐</span>
+      </div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <span class="history-card-occasion">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            商务送礼 · 500-1000元
+          </span>
+          <span class="history-card-stats">采纳 2/3</span>
+        </div>
+        <div class="history-gifts">
+          <span class="history-gift-chip accepted">茅台镇酱酒</span>
+          <span class="history-gift-chip accepted">武夷山大红袍</span>
+          <span class="history-gift-chip rejected">钢笔礼盒</span>
+        </div>
+        <div class="history-card-bottom">
+          <span class="history-card-time">2026-06-15 10:08 · DeepSeek</span>
+          <span class="history-card-reuse">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            基于此再推荐
+          </span>
+        </div>
+      </div>
+    </div>
+  </div><!-- /page-history -->
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PAGE: PROFILE (我的)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-profile" data-od-id="page-profile">
+    <div class="app-header">
+      <h1>我的</h1>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--muted);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 010-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 014 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 010 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
+    </div>
+
+    <!-- profile header -->
+    <div class="profile-header">
+      <div class="profile-avatar">L</div>
+      <div>
+        <div class="profile-name">Liu</div>
+        <div class="profile-id">微信用户 · openid_wx***8k2</div>
+      </div>
+    </div>
+
+    <!-- quota card -->
+    <div class="quota-card" data-od-id="quota-card">
+      <div class="quota-card-top">
+        <span class="quota-card-num" id="profile-quota-num">3</span>
+        <span class="quota-card-unit">次</span>
+        <span class="quota-card-label">推荐机会</span>
+      </div>
+      <div style="font-size:var(--fs-mini);opacity:0.7;margin-bottom:16px;">
+        已使用 8 次 · 累计获得 11 次
+      </div>
+      <div class="quota-card-actions">
+        <button class="quota-card-btn" onclick="showQuotaModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2z"/></svg>
+          看视频 +3
+        </button>
+        <button class="quota-card-btn" onclick="showToast('分享卡片已生成 +2次额度')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+          分享 +2
+        </button>
+        <button class="quota-card-btn" onclick="claimDaily()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          每日 +1
+        </button>
+      </div>
+    </div>
+
+    <!-- reminders -->
+    <div class="section-title">
+      <h2>节日提醒</h2>
+      <span class="link-more" onclick="showToast('查看全部')">管理</span>
+    </div>
+    <div style="margin:0 20px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:4px 16px;" data-od-id="reminders">
+      <div class="reminder-item">
+        <div class="reminder-date" style="background:var(--accent-soft);">
+          <span class="day" style="color:var(--accent);">15</span>
+          <span class="month" style="color:var(--accent);">8月</span>
+        </div>
+        <div class="reminder-info">
+          <div class="reminder-name">妈妈 · 生日</div>
+          <div class="reminder-occasion">每年循环 · 提前7天提醒</div>
+        </div>
+        <span class="reminder-countdown" style="background:var(--accent-soft);color:var(--accent);">14天</span>
+      </div>
+      <div class="reminder-item">
+        <div class="reminder-date" style="background:var(--accent2-soft);">
+          <span class="day" style="color:var(--accent-2);">20</span>
+          <span class="month" style="color:var(--accent-2);">10月</span>
+        </div>
+        <div class="reminder-info">
+          <div class="reminder-name">小晴 · 恋爱纪念日</div>
+          <div class="reminder-occasion">每年循环 · 提前3天提醒</div>
+        </div>
+        <span class="reminder-countdown" style="background:var(--accent2-soft);color:var(--accent-2);">80天</span>
+      </div>
+      <div class="reminder-item">
+        <div class="reminder-date" style="background:var(--warn-soft);">
+          <span class="day" style="color:var(--warn);">25</span>
+          <span class="month" style="color:var(--warn);">12月</span>
+        </div>
+        <div class="reminder-info">
+          <div class="reminder-name">圣诞节</div>
+          <div class="reminder-occasion">每年循环 · 节日提醒</div>
+        </div>
+        <span class="reminder-countdown" style="background:var(--warn-soft);color:var(--warn);">146天</span>
+      </div>
+    </div>
+
+    <!-- quota logs -->
+    <div class="section-title">
+      <h2>额度流水</h2>
+      <span class="link-more" onclick="showToast('查看全部流水')">全部</span>
+    </div>
+    <div style="margin:0 20px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;" data-od-id="quota-logs">
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="width:28px;height:28px;border-radius:8px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg>
+          </span>
+          <div>
+            <div style="font-size:var(--fs-meta);font-weight:600;">每日登录奖励</div>
+            <div style="font-size:10px;color:var(--muted);">2026-08-01</div>
+          </div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:var(--fs-body);font-weight:700;color:var(--success);">+1</span>
+      </div>
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="width:28px;height:28px;border-radius:8px;background:var(--fg-soft);display:grid;place-items:center;color:var(--muted);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M3 12h3M18 12h3"/></svg>
+          </span>
+          <div>
+            <div style="font-size:var(--fs-meta);font-weight:600;">推荐消耗 · 妈妈</div>
+            <div style="font-size:10px;color:var(--muted);">2026-08-01 09:32</div>
+          </div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:var(--fs-body);font-weight:700;color:var(--danger);">-1</span>
+      </div>
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="width:28px;height:28px;border-radius:8px;background:var(--accent2-soft);display:grid;place-items:center;color:var(--accent-2);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="14" height="14" rx="2"/></svg>
+          </span>
+          <div>
+            <div style="font-size:var(--fs-meta);font-weight:600;">激励视频奖励</div>
+            <div style="font-size:10px;color:var(--muted);">2026-07-31</div>
+          </div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:var(--fs-body);font-weight:700;color:var(--success);">+3</span>
+      </div>
+    </div>
+
+    <!-- settings -->
+    <div class="section-title"><h2>设置</h2></div>
+    <div class="profile-menu" data-od-id="settings">
+      <div class="menu-item" onclick="showToast('邀请好友开发中')">
+        <div class="menu-item-icon" style="background:var(--accent-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+        </div>
+        <span class="menu-item-label">邀请好友 · 得额度</span>
+        <span class="menu-item-value">已邀请 2 人</span>
+        <span class="menu-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </div>
+      <div class="menu-item" onclick="showToast('隐私设置')">
+        <div class="menu-item-icon" style="background:var(--fg-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <span class="menu-item-label">隐私与安全</span>
+        <span class="menu-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </div>
+      <div class="menu-item" onclick="showToast('关于 AIGift v1.0')">
+        <div class="menu-item-icon" style="background:var(--accent2-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-2)" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        </div>
+        <span class="menu-item-label">关于 AIGift</span>
+        <span class="menu-item-value">v1.0.0</span>
+        <span class="menu-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </div>
+      <div class="menu-item" onclick="showToast('意见反馈')">
+        <div class="menu-item-icon" style="background:var(--warn-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.4 8.4 0 01-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.4 8.4 0 013.8-.9 8.5 8.5 0 018.5 8.5z"/></svg>
+        </div>
+        <span class="menu-item-label">意见反馈</span>
+        <span class="menu-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </div>
+    </div>
+
+    <div style="padding:24px 20px;text-align:center;">
+      <p style="font-size:10px;color:var(--muted);">AIGift v1.0.0 · 让每一次送礼都精准到位</p>
+    </div>
+
+    <!-- banner ad -->
+    <div style="margin:0 20px 16px;height:60px;background:var(--fg-soft);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:var(--fs-mini);color:oklch(65% 0.01 30);gap:4px;">
+      <span style="font-family:var(--font-mono);font-size:9px;padding:1px 4px;border:1px solid var(--border);border-radius:3px;">AD</span>
+      <span>Banner 广告位</span>
+    </div>
+  </div><!-- /page-profile -->
+
+  </div><!-- /app-content -->
+
+  <!-- ═══ tabbar ═══ -->
+  <div class="tabbar" id="tabbar">
+    <div class="tab-item active" data-tab="recommend" onclick="switchTab('recommend')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span>推荐</span>
+    </div>
+    <div class="tab-item" data-tab="recipients" onclick="switchTab('recipients')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8"/></svg>
+      <span>对象</span>
+    </div>
+    <div class="tab-item" data-tab="history" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+      <span>历史</span>
+    </div>
+    <div class="tab-item" data-tab="profile" onclick="switchTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>我的</span>
+    </div>
+  </div>
+
+  <!-- ═══ quota modal ═══ -->
+  <div class="modal-overlay" id="quota-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">补充推荐额度</div>
+      <div class="modal-sub">选择以下方式获取更多推荐次数</div>
+
+      <div class="quota-option" onclick="watchAd()">
+        <div class="quota-option-icon" style="background:var(--accent2-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-2)" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="14" height="14" rx="2"/></svg>
+        </div>
+        <div class="quota-option-info">
+          <div class="quota-option-title">观看激励视频</div>
+          <div class="quota-option-desc">观看完整广告视频（约30秒）</div>
+        </div>
+        <div class="quota-option-amount" style="color:var(--accent-2);">+3</div>
+      </div>
+
+      <div class="quota-option" onclick="shareFriend()">
+        <div class="quota-option-icon" style="background:var(--accent-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </div>
+        <div class="quota-option-info">
+          <div class="quota-option-title">分享给好友</div>
+          <div class="quota-option-desc">好友首次打开即生效</div>
+        </div>
+        <div class="quota-option-amount" style="color:var(--accent);">+2</div>
+      </div>
+
+      <div class="quota-option" onclick="claimDaily()">
+        <div class="quota-option-icon" style="background:var(--warn-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <div class="quota-option-info">
+          <div class="quota-option-title">每日登录</div>
+          <div class="quota-option-desc">每日首次进入领取</div>
+        </div>
+        <div class="quota-option-amount" style="color:var(--warn);">+1</div>
+      </div>
+
+      <button onclick="hideQuotaModal()" style="width:100%;padding:12px;margin-top:8px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);font-size:var(--fs-body);color:var(--muted);">关闭</button>
+    </div>
+  </div>
+
+  <!-- ═══ loading overlay ═══ -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-icon"></div>
+    <div class="loading-text">AI 正在为你精心挑选礼物<br><span class="loading-dots">基于对象画像、偏好与禁忌分析中…</span></div>
+  </div>
+
+  <!-- ═══ toast ═══ -->
+  <div class="toast" id="toast"></div>
+
+</div><!-- /phone -->
+
+<script>
+// ═══ state ═══
+var state = {
+  quota: 3,
+  currentTab: 'recommend',
+  currentPage: 'page-recommend',
+  interstitialCount: 0,
+};
+
+// ═══ tab switching ═══
+function switchTab(tab) {
+  state.currentTab = tab;
+  // hide all tab pages
+  var pages = ['page-recommend','page-result','page-recipients','page-recipient-edit','page-history','page-profile'];
+  var tabMap = {
+    'recommend': 'page-recommend',
+    'recipients': 'page-recipients',
+    'history': 'page-history',
+    'profile': 'page-profile'
+  };
+  pages.forEach(function(p){ document.getElementById(p).classList.remove('active'); });
+  var targetPage = tabMap[tab] || 'page-recommend';
+  document.getElementById(targetPage).classList.add('active');
+  // update tabbar
+  document.querySelectorAll('.tab-item').forEach(function(t){
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  // show/hide tabbar
+  var showTabbar = ['recommend','recipients','history','profile'].indexOf(tab) >= 0;
+  document.getElementById('tabbar').style.display = showTabbar ? 'flex' : 'none';
+  // scroll to top
+  document.querySelector('.app-content').scrollTo({top: 0});
+}
+
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var page = document.getElementById(pageId);
+  if (page) {
+    page.classList.add('active');
+    state.currentPage = pageId;
+  }
+  // show/hide tabbar
+  var noTabPages = ['page-result','page-recipient-edit'];
+  document.getElementById('tabbar').style.display = noTabPages.indexOf(pageId) >= 0 ? 'none' : 'flex';
+  document.querySelector('.app-content').scrollTo({top: 0});
+}
+
+// ═══ recipient selection ═══
+function selectRecipient(el) {
+  document.querySelectorAll('.recipient-chip').forEach(function(c){ c.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+
+// ═══ scenario template ═══
+function applyTemplate(el, type) {
+  // reset all template styles
+  document.querySelectorAll('.template-chip').forEach(function(c){
+    c.style.background = 'var(--surface)';
+    c.style.border = '1px solid var(--border)';
+    c.style.color = 'var(--fg)';
+  });
+  // highlight selected
+  el.style.background = 'var(--accent)';
+  el.style.color = 'white';
+  el.style.border = 'none';
+
+  var labels = {
+    birthday: '生日',
+    anniversary: '纪念日',
+    festival: '节日',
+    thanks: '感谢',
+    business: '商务',
+    visit: '探望'
+  };
+  showToast('已应用「' + (labels[type] || type) + '」场景模板');
+}
+
+// ═══ generate recommendations ═══
+function generateRecommendations() {
+  // check quota
+  if (state.quota <= 0) {
+    showQuotaModal();
+    return;
+  }
+
+  // show loading
+  document.getElementById('loading-overlay').classList.add('show');
+
+  // deduct quota
+  state.quota--;
+  updateQuotaDisplay();
+
+  // simulate AI call
+  setTimeout(function(){
+    document.getElementById('loading-overlay').classList.remove('show');
+    switchPage('page-result');
+
+    // interstitial ad logic (skip first, max 2 per session)
+    state.interstitialCount++;
+    if (state.interstitialCount > 1 && state.interstitialCount <= 3) {
+      setTimeout(function(){
+        showToast('插屏广告 · 频控保护中（每会话≤2次）');
+      }, 500);
+    }
+  }, 2200);
+}
+
+// ═══ regenerate ═══
+function regenerate() {
+  if (state.quota <= 0) {
+    showQuotaModal();
+    return;
+  }
+  state.quota--;
+  updateQuotaDisplay();
+
+  document.getElementById('loading-overlay').classList.add('show');
+  setTimeout(function(){
+    document.getElementById('loading-overlay').classList.remove('show');
+    showToast('已重新生成推荐（消耗 1 次额度）');
+    document.querySelector('.app-content').scrollTo({top: 0});
+  }, 1800);
+}
+
+// ═══ gift feedback ═══
+function giftFeedback(btn, type) {
+  var card = btn.closest('.gift-card');
+  var actions = card.querySelector('.gift-actions');
+
+  if (type === 'accepted') {
+    // reset sibling buttons
+    var rejectBtn = actions.querySelector('.gift-action-reject');
+    rejectBtn.classList.remove('acted');
+    rejectBtn.querySelector('svg').style.stroke = '';
+    btn.classList.toggle('acted');
+    if (btn.classList.contains('acted')) showToast('已标记为「采纳」· 偏好已更新');
+  } else if (type === 'rejected') {
+    var acceptBtn = actions.querySelector('.gift-action-accept');
+    acceptBtn.classList.remove('acted');
+    btn.classList.toggle('acted');
+    if (btn.classList.contains('acted')) showToast('已标记为「不采纳」');
+  } else if (type === 'favorited') {
+    btn.classList.toggle('acted');
+    if (btn.classList.contains('acted')) showToast('已收藏');
+  }
+}
+
+// ═══ quota modal ═══
+function showQuotaModal() {
+  document.getElementById('quota-modal').classList.add('show');
+}
+function hideQuotaModal() {
+  document.getElementById('quota-modal').classList.remove('show');
+}
+
+function watchAd() {
+  hideQuotaModal();
+  document.getElementById('loading-overlay').classList.add('show');
+  document.querySelector('.loading-text').innerHTML = '广告播放中…<br><span class="loading-dots">请观看完整视频以获取额度</span>';
+  setTimeout(function(){
+    document.getElementById('loading-overlay').classList.remove('show');
+    document.querySelector('.loading-text').innerHTML = 'AI 正在为你精心挑选礼物<br><span class="loading-dots">基于对象画像、偏好与禁忌分析中…</span>';
+    state.quota += 3;
+    updateQuotaDisplay();
+    showToast('激励视频完成 · 获得 3 次推荐额度');
+  }, 2500);
+}
+
+function shareFriend() {
+  hideQuotaModal();
+  state.quota += 2;
+  updateQuotaDisplay();
+  showToast('分享成功 · 获得 2 次推荐额度');
+}
+
+function claimDaily() {
+  hideQuotaModal();
+  state.quota += 1;
+  updateQuotaDisplay();
+  showToast('每日登录奖励 · 获得 1 次推荐额度');
+}
+
+// ═══ update quota display ═══
+function updateQuotaDisplay() {
+  document.getElementById('quota-num').textContent = state.quota;
+  var profileQuota = document.getElementById('profile-quota-num');
+  if (profileQuota) profileQuota.textContent = state.quota;
+}
+
+// ═══ toast ═══
+var toastTimer;
+function showToast(msg) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){
+    toast.classList.remove('show');
+  }, 2500);
+}
+
+// ═══ tag toggle ═══
+document.querySelectorAll('.tag-item, .pill-option').forEach(function(tag){
+  tag.addEventListener('click', function(){
+    this.classList.toggle('active');
+  });
+});
+
+// ═══ close modal on overlay click ═══
+document.getElementById('quota-modal').addEventListener('click', function(e){
+  if (e.target === this) hideQuotaModal();
+});
+
+</script>
+</body>
+</html>

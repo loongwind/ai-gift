@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "aigift-prototype.html",
+  "entry": "aigift-prototype.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-08-01T14:30:14.420Z",
+  "updatedAt": "2026-08-01T14:30:14.420Z",
+  "metadata": {
+    "inferred": true,
+    "reconciled": true
+  }
+}

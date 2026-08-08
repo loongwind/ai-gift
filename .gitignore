@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Editor / IDE configs
+.obsidian/
+.vscode/
+.idea/
+
+# Open Design platform tooling (injected skills, not project code)
+.od-skills/
