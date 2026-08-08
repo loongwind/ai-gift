@@ -72,7 +72,8 @@ miniprogram/
 │   ├── recipient-edit/     对象新建/编辑（navigateTo）
 │   ├── recipient-detail/   对象详情：画像+关联历史+重要日期（navigateTo）
 │   ├── history/            历史（tab）
-│   └── profile/            我的（tab）
+│   ├── profile/            我的（tab）
+│   └── settings/           设置：隐私/关于/反馈/注销（navigateTo，评审 4.1）
 ├── components/             【真接入：页面 .json 的 usingComponents 注册】
 │   ├── completeness-bar/   完整度进度条 + 分档徽章
 │   ├── quota-bar/          额度条 +「看视频 +N」
@@ -135,17 +136,16 @@ App({
   onShow() { if (!this.globalData.isLoggedIn) this.doAutoLogin(); },
   doAutoLogin() {
     if (this.globalData.isLoggedIn) return;            // 幂等
-    wx.login({ success: (r) => {
-      callApi('user/autoLogin', { loginCode: r.code }, false)
-        .then((d) => {
-          this.globalData.userInfo = d;
-          this.globalData.openid = d.openid;
-          this.globalData.isLoggedIn = true;
-          wx.setStorageSync('userInfo', d);
-          // 每日登录奖励由后端 autoLogin 内处理，前端只刷新额度显示
-        })
-        .catch((err) => showError(err.message));
-    }});
+    // openid 由云函数 wxContext 自动提供（云开发特性），无需前端 wx.login/code2session（评审 4.2）
+    callApi('user/autoLogin', {}, false)
+      .then((d) => {
+        this.globalData.userInfo = d;
+        this.globalData.openid = d.openid;
+        this.globalData.isLoggedIn = true;
+        wx.setStorageSync('userInfo', d);
+        // 每日登录奖励由后端 autoLogin 内处理，前端只刷新额度显示
+      })
+      .catch((err) => showError(err.message));
   },
 });
 ```
@@ -161,7 +161,7 @@ App({
 
 ```js
 // utils/api.js
-async function callApi(route, data = {}, showLoading = true) {
+async function callOnce(route, data, showLoading) {
   if (showLoading) wx.showLoading({ title: '加载中...', mask: true });
   try {
     const res = await callFunction({ name: 'aigift_app', data: { route, ...data } });
@@ -172,7 +172,15 @@ async function callApi(route, data = {}, showLoading = true) {
     return res.result && res.result.data !== undefined ? res.result.data : res.result;
   } catch (err) {
     wx.hideLoading();
-    return Promise.reject({ code: err.code || -1, message: err.message || '网络错误' });
+    return Promise.reject({ code: err.code || -1, message: err.message || '网络异常，请稍后重试' });
+  }
+}
+// 网络错误（code=-1）自动重试 1 次；业务错误（code>0）不重试（评审 I4）
+async function callApi(route, data = {}, showLoading = true) {
+  try { return await callOnce(route, data, showLoading); }
+  catch (err) {
+    if (err.code === -1) return await callOnce(route, data, showLoading);  // 网络错误重试一次
+    throw err;
   }
 }
 module.exports = { callApi, get: callApi, post: callApi, put: callApi, del: callApi };
@@ -180,6 +188,7 @@ module.exports = { callApi, get: callApi, post: callApi, put: callApi, del: call
 
 - resolve 出 `data`，reject 出 `{code,message}`；页面统一 `showError(err.message)`。
 - 静默调用（如埋点、刷新额度）传 `showLoading=false`。
+- **网络错误重试**：`code=-1`（云函数冷启动/超时/断网）自动重试 1 次；业务错误码（如 `RATE_LIMITED`/`QUOTA_*`）不重试，直接交页面处理。
 
 ### 5.2 跨页刷新：globalData 脏标记（复用 fixbill 模式）
 
@@ -285,7 +294,11 @@ async onFeedback(e) {
 
 - 额度详情 + 流水（`quota/getLogs` 分页）。
 - 提醒列表（增删，`reminder/list|add|remove`）。
-- 设置：隐私/关于/反馈（反馈可复用表单页模式）。
+- **设置入口** → 独立 `pages/settings`（评审 4.1 差异1：设置项含隐私协议、关于、反馈、注销，适合独立页）：
+  - 隐私协议：`web-view` 打开 H5 或独立 `pages/privacy`。
+  - 反馈：复用表单页模式，提交 `feedback` 类内容。
+  - 关于：版本号（含 `AIGIFT_VERSION`）/联繫方式。
+  - **注销账号（评审 I6）**：`wx.showModal` 二次确认 → 调 `user/deleteAccount` → 清 Storage → 回登录页。
 
 ---
 
@@ -311,7 +324,7 @@ module.exports = { computeCompleteness, REQUIRED, OPTIONAL_FIELDS };
 
 - **前端实时算**（输入 debounce 后刷新进度条/徽章/按钮置灰）。
 - **后端保存时重算**并存 `recipients.completeness_score`（后端 `common/constants.js` 维护同一份字典作为契约）。
-- **契约一致性**：前端 `utils/constants.js` 与后端 `common/constants.js` 的 REQUIRED/OPTIONAL_FIELDS/DICT/场景模板/预算分档必须逐字段对齐（实现时以后端为单一事实源，前端从同一份常量同步）。
+- **契约一致性（评审 I8）**：前后端两份字典须逐字段一致，靠人工同步易漂移。方案：把 REQUIRED/OPTIONAL_FIELDS/DICT/场景模板/预算分档抽取为仓库内单一 JSON 源文件，构建脚本同时生成前端 `utils/constants.dict.js` 与后端 `common/dict.js`；或新增 PUBLIC 路由 `config/dict` 让前端启动时拉取并缓存。MVP 先用"单一 JSON 源 + 手动同步 + 单测比对"，V2 再上 codegen/接口。
 
 分档徽章：tier0 标准 / tier1 精准✨ / tier2 高精准🌟（文案同原型）。
 
@@ -363,9 +376,9 @@ font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue",
 
 | 位 | API | 频控/触发 |
 |---|---|---|
-| Banner | `wx.createBannerAd`，首页/结果页/我的常驻 | — |
+| Banner | `wx.createBannerAd`，首页/结果页/我的常驻 | `onError` 隐藏容器（见下降级） |
 | 插屏 | `wx.createInterstitialAd`，生成成功后触发 | **首次推荐不插；每会话 ≤2 次**（globalData 计数） |
-| 激励视频 | `wx.createRewardedVideoAd`，额度不足/主动点触发 | `onClose({isEnded})` → `quota/rewardVideoCallback` |
+| 激励视频 | `wx.createRewardedVideoAd`，额度不足/主动点触发 | **`onClose` 仅做 UI；发奖由服务端回调驱动**（S3） |
 
 ```js
 // utils/ad.js（复用 fixbill 并扩展）
@@ -379,16 +392,34 @@ function tryShowPendingInterstitial() {
   const ad = wx.createInterstitialAd({ adUnitId: AD_UNITS.interstitial });
   ad.show().catch(() => {});
 }
-// 激励视频
-function watchRewardVideo(onReward) {
-  const video = wx.createRewardedVideoAd({ adUnitId: AD_UNITS.rewardVideo });
-  video.onClose((res) => { if (res.isEnded) onReward(); });        // 完整观看才发奖
+
+// 激励视频：页面 onLoad 预加载，onClose 仅 UI 跳转（发奖靠服务端回调，评审 S3）
+function preloadRewardVideo() {
+  const openid = getApp().globalData.openid;
+  this._rewardVideo = wx.createRewardedVideoAd({
+    adUnitId: AD_UNITS.rewardVideo,
+    // 透传用户标识，供微信服务端回调原样回传（具体字段以流量主文档为准）
+    userId: openid,
+  });
+  this._rewardVideo.load().catch(() => {});                        // 预加载减少等待
+}
+function watchRewardVideo() {
+  const video = this._rewardVideo || wx.createRewardedVideoAd({ adUnitId: AD_UNITS.rewardVideo });
+  video.onClose((res) => {
+    if (!res.isEnded) return showSuccess('未看完视频，未获得额度');
+    showSuccess('奖励审核中，稍后到账');                            // 不直接发奖
+    // 服务端 rewardVideoServerCallback 由微信回调驱动发奖；
+    // 前端 2-3s 后轮询一次 getUserInfo 刷新额度，或等 onShow 自然刷新
+    setTimeout(() => refreshQuota(), 2500);
+  });
   video.show().catch(() => video.load().then(() => video.show()));
 }
 ```
 
-- 广告单元 ID 占位放 `constants.js#AD_UNITS`，过审后填真实 ID。
-- 激励视频回调前端只上报 `isEnded`，后端做每日上限校验（见后端 §6.4）。
+- **广告单元 ID** 占位放 `constants.js#AD_UNITS`，过审后填真实 ID。
+- **流量主准入降级（评审 4.2）**：小程序 UV < 1000 无法开通流量主，且审核期广告实例可能 `onError`。`ad-slot` 组件统一监听 `onError` → `hidden=true` 隐藏容器，避免空白/报错；激励视频 `onError` → 引导用户改走"分享 +2"补充额度。
+- **激励视频安全（S3）**：前端**不再调用** `quota/rewardVideoCallback`；发奖完全由微信广告服务端回调 `quota/rewardVideoServerCallback`（签名校验 + trans_id 幂等）驱动。前端只负责播放与 UI 反馈，额度到账经 `getUserInfo` 刷新体现。详见后端 §6.4。
+- **RATE_LIMITED 处理（S4）**：`callApi` reject 带 `code=1004` 时，`showError('操作太频繁，请稍后再试')`，不展示重试按钮（限流是预期行为）。
 
 ---
 
@@ -416,6 +447,8 @@ if (launchOptions.query && launchOptions.query.inviter && !wx.getStorageSync('in
 }
 ```
 
+> **分享到账反馈（评审 4.1 差异2）**：分享奖励仅在**好友打开小程序后**经 `share/inviteCallback` 发放，非分享者主动触发即到账。结果页/首页「分享 +2」按钮旁须加文案「好友打开后自动到账」，避免用户期待即时反馈。
+
 ### 10.2 提醒订阅消息
 
 ```js
@@ -435,16 +468,39 @@ wx.requestSubscribeMessage({
 
 - **已知限制**：每次授权 = 1 次发送配额；循环提醒次年需重新授权。MVP：建日期时收 1 次、推 1 次；次年到期前在 App 打开时由前端提示再授权。
 
+### 10.3 循环提醒待授权队列（评审 4.2）
+
+次年需重新授权的循环提醒，由前端在 App `onShow` 主动引导（避免用户漏掉）：
+
+```js
+// app.js onShow（已登录后，每日最多弹一次）
+async function checkPendingConsents() {
+  if (wx.getStorageSync('consentPromptedDate') === today) return;
+  const { list } = await callApi('reminder/listPendingConsents', {}, false); // 后端返回需重新授权的循环提醒
+  if (!list.length) return;
+  wx.setStorageSync('consentPromptedDate', today);
+  wx.requestSubscribeMessage({
+    tmplIds: [REMINDER_TMPL_ID],
+    success: (res) => { /* accept 则后端该日期本年可推送；reject 忽略，次日再提示 */ },
+  });
+}
+```
+
+> 后端 `reminder/listPendingConsents` 返回 `is_recurring=1` 且本年尚未授权/已推送过的提醒；前端用 Storage 控制每日只弹一次，避免打扰。
+
 ---
 
 ## 11. 错误处理与性能
 
 - **错误**：`callApi` reject → `showError(err.message)`；表单 `errors` map + 红框；提交 `submitting` 互斥防重（复用 fixbill）。
-- **性能**：
+- **重试按钮（评审 I4）**：关键操作（生成推荐、加载列表）失败且为网络错误时，展示空态组件的「重试」按钮回调原方法，而非仅 toast。
+- **性能与资源（含评审 F1-F4）**：
   - 骨架屏/空态（`empty-state` 组件）覆盖列表加载。
   - history/profile 流水分页（`onReachBottom`）。
-  - recommend 生成期 AI 思考动画，对冲等待感（P95<8s）。
-  - 图片懒加载；主包体积控制（字体已不入包，约可省 1-2MB）。
+  - recommend 生成期 AI 思考动画，对冲等待感（**主路径 P95<8s，长尾（重试/兜底）<10s**，对齐后端 §6.2 延迟预算）。
+  - **图片资源（F3）**：主包图片用 WebP、单文件 ≤ 200KB；图标优先 CSS/emoji，大图走 CloudBase 云存储 CDN。
+  - **分包与预加载（F1/F2）**：MVP 7 页 + 组件若逼近主包 2MB，将 `recipient-edit/detail`、`history` 拆入分包，并在 `app.json` 配 `preloadRule` 预加载结果页所属分包，降低导航延迟。
+  - **tab 角标同步（F4）**：`custom-tab-bar` 在 `onShow`/全局事件中读 `globalData.freeQuota` 刷新「我的」额度角标、「历史」新标记。
 - **兼容**：`project.config.json` 设最低基础库 **2.19.4+**（env-sharing + 订阅消息 + 激励视频稳定支持）。
 
 ---
@@ -467,18 +523,19 @@ fixbill 前端无自动化测试。AIGift MVP：
 
 **直接复用**：`cloud.js`（改 RESOURCE 常量）、`api.js`、`helpers.js`、`auth.js`、`custom-tab-bar`、globalData 脏标记模式、表单（data-field + errors + submitting）模式。
 
-**新增**：`utils/completeness.js` 纯函数；`utils/constants.js` 的字典 DICT/场景模板/预算分档（源自原型 `data.js`）；`segment-group`/`recipient-form`/`completeness-bar`/`quota-bar`/`gift-card` 等组件；订阅授权流；激励视频/插屏频控/分享/每日登录的前端配套。
+**新增**：`utils/completeness.js` 纯函数；`utils/constants.js` 的字典 DICT/场景模板/预算分档（源自原型 `data.js`）；`segment-group`/`recipient-form`/`completeness-bar`/`quota-bar`/`gift-card` 等组件；`pages/settings`（隐私/关于/反馈/注销）；激励视频**服务端回调驱动发奖**的前端配套（onClose 仅 UI + 预加载 + 额度轮询，S3）；插屏频控/分享到账文案；**循环提醒待授权队列**（onShow 弹起，4.2）；`callApi` 网络错误重试（I4）；广告 `onError` 降级 + tab 角标同步（F3/F4）。
 
-**调整**：配色令牌换暖色系（paper/ink + rose/gold/sage/terra）；字体改纯系统；组件真接入（页面 `usingComponents` 注册）；标签颜色映射单一来源。
+**调整**：配色令牌换暖色系（paper/ink + rose/gold/sage/terra）；字体改纯系统；组件真接入（页面 `usingComponents` 注册）；标签颜色映射单一来源；延迟目标主路径 P95<8s、长尾<10s。
 
-**砍掉**：远程字体加载。
+**砍掉**：远程字体加载；前端 loginCode（openid 由 wxContext 提供）；前端直接发奖调用（改服务端回调）。
 
 ---
 
 ## 14. 已知限制与遗留决策
 
 1. **字体**：纯系统字体，牺牲原型衬线/手写气质，靠配色与版式补偿。
-2. **激励视频**：客户端上报 `isEnded` 可被篡改，加固需 wx 服务端回调（V2）。
-3. **订阅消息**：年度循环提醒需每年重新授权（wx 限制）。
-4. **AppID/env-sharing**：本文档假设 AIGift 独立 AppID + 共享 fixbill 环境；若实际挂同主体则简化 `cloud.js`。
-5. **完整度契约**：前后端两份字典须保持逐字段一致，建议实现时以后端 `common/constants.js` 为单一事实源同步前端。
+2. **激励视频依赖服务端回调（S3 已修）**：发奖由微信广告服务端回调驱动，需流量主开通 + 回调 URL 配置正确；配置错误时前端靠额度轮询/重拉兜底感知，但存在到账延迟。
+3. **订阅消息**：年度循环提醒需每年重新授权（wx 限制），由 `onShow` 待授权队列引导。
+4. **AppID/env-sharing（待确认 1）**：本文档假设 AIGift 独立 AppID + 共享 fixbill 环境；若实际挂同主体则简化 `cloud.js`（去 env-sharing）。
+5. **完整度契约（I8）**：前后端字典一致性 MVP 靠单一 JSON 源 + 单测比对，V2 上 codegen/`config/dict` 接口。
+6. **流量主未开通期**：UV < 1000 无法开通流量主，广告位降级隐藏、激励视频引导改走分享补充额度。
