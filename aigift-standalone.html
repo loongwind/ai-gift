@@ -705,6 +705,23 @@ svg { display: block; }
 .gift-card[data-status="accepted"] { border-color: var(--sage); background: #FAFCF6; }
 .gift-card[data-status="rejected"] { opacity: .55; }
 
+/* ---------- 不采纳原因输入 ---------- */
+.reject-reason { margin-top: 12px; }
+.reject-reason__label {
+  display: block; font-size: 11.5px; color: var(--terra);
+  font-weight: 600; margin-bottom: 6px;
+}
+.reject-reason__input {
+  width: 100%; box-sizing: border-box; resize: none;
+  border: .5px solid var(--terra-l); border-radius: 10px;
+  background: var(--paper-2); color: var(--ink-1);
+  font-family: inherit; font-size: 12.5px; line-height: 1.6;
+  padding: 8px 10px; outline: none;
+  transition: border-color .18s var(--ease);
+}
+.reject-reason__input:focus { border-color: var(--terra); background: #fff; }
+.reject-reason__input::placeholder { color: var(--ink-3); }
+
 /* ============================================================
    对象 / 历史 / 我的 列表
    ============================================================ */
@@ -1411,6 +1428,7 @@ window.AIGIFT_DATA = {
     form: { ...DEFAULT_FORM },
     lastResults: null,
     lastFeedback: {},
+    lastFeedbackReasons: {},
     lastResultContext: null,
     history: loadHistory(),
     flow: loadFlow(),
@@ -1549,20 +1567,35 @@ window.AIGIFT_DATA = {
     return parts.join("\n");
   }
 
-  function buildFeedbackSummary(recipientId) {
-    const pastRecs = state.history.filter(h => h.recipientId === recipientId);
+  function buildFeedbackSummary(recipientId, recipientName) {
+    // 优先按已保存对象 ID 匹配；未选对象时按称呼匹配（手动填表单场景）
+    const pastRecs = state.history.filter(h =>
+      recipientId ? h.recipientId === recipientId
+                  : (recipientName && h.recipientName === recipientName));
     if (!pastRecs.length) return null;
     const accepted = [];
     const rejected = [];
+    const rejectReasons = [];
     pastRecs.forEach(h => {
       h.items.forEach(it => {
         if (it.status === "accepted") accepted.push(it.name);
-        else if (it.status === "rejected") rejected.push(it.name);
+        else if (it.status === "rejected") {
+          rejected.push(it.name);
+          // 不采纳原因（用户填写才存在），带日期便于看偏好时效
+          if (it.rejectReason) rejectReasons.push({ reason: it.rejectReason, date: h.date });
+        }
       });
     });
     const parts = [];
     if (accepted.length) parts.push(`之前采纳过的礼物：${accepted.join("、")}（请避免重复推荐）`);
     if (rejected.length) parts.push(`之前未采纳的礼物：${rejected.join("、")}（请避免推荐类似的）`);
+    if (rejectReasons.length) {
+      const recent = rejectReasons.slice(-10);  // 只取最近 10 条，控制 prompt 长度
+      parts.push(
+        "用户此前明确表示不喜欢的礼物特征（负向偏好，本次推荐务必规避同类）：\n" +
+        recent.map(r => `- ${r.reason}${r.date ? `（${r.date} 记录）` : ""}`).join("\n")
+      );
+    }
     return parts.length ? parts.join("\n") : null;
   }
 
@@ -2083,12 +2116,13 @@ window.AIGIFT_DATA = {
     const formSnapshot = { ...state.form };
     const recipientId = state.currentRecipientId;
     const recipientName = state.form.name || "TA";
-    const feedbackSummary = recipientId ? buildFeedbackSummary(recipientId) : null;
+    const feedbackSummary = buildFeedbackSummary(recipientId, recipientName);
 
     try {
       const results = await callDeepSeek(formSnapshot, feedbackSummary);
       state.lastResults = results;
       state.lastFeedback = {};
+      state.lastFeedbackReasons = {};
       state.lastResultContext = {
         recipientId,
         recipientName,
@@ -2112,6 +2146,7 @@ window.AIGIFT_DATA = {
       const results = generateResultsLocal();
       state.lastResults = results;
       state.lastFeedback = {};
+      state.lastFeedbackReasons = {};
       state.lastResultContext = {
         recipientId,
         recipientName,
@@ -2138,6 +2173,11 @@ window.AIGIFT_DATA = {
     const cards = results.map((g, i) => {
       const fb = state.lastFeedback[i];
       const status = fb === "accepted" ? "accepted" : fb === "rejected" ? "rejected" : "";
+      const reasonBox = status === "rejected" ? `
+        <div class="reject-reason">
+          <label class="reject-reason__label" for="rr_${i}">帮忙填个原因（可不填）— 让下次推荐更懂 TA</label>
+          <textarea id="rr_${i}" class="reject-reason__input" data-rr-idx="${i}" rows="2" maxlength="100" placeholder="如：颜色太艳 / 不爱首饰 / 有类似的了…">${escape(state.lastFeedbackReasons[i] || "")}</textarea>
+        </div>` : "";
       return `
       <div class="gift-card" data-status="${status}" style="animation-delay:${i * 0.08}s">
         <div class="gift-card__top">
@@ -2155,6 +2195,7 @@ window.AIGIFT_DATA = {
           <div class="note__txt">${escape(g.reason)}</div>
           <div class="note__hint">${ICO.bag}建议购买：${escape(g.purchaseHint)}</div>
         </div>
+        ${reasonBox}
         <div class="gift-card__actions">
           <button class="gact" data-action="feedback" data-idx="${i}" data-kind="accepted" data-on="${fb === "accepted"}">
             ${ICO.check}采纳
@@ -2189,14 +2230,23 @@ window.AIGIFT_DATA = {
   function handleFeedback(idx, kind) {
     const cur = state.lastFeedback[idx];
     state.lastFeedback[idx] = cur === kind ? "" : kind;
+    // 切换反馈时清理对应的原因状态：取消不采纳或改为采纳，原因作废
+    if (kind !== "rejected" || cur === "rejected") {
+      delete state.lastFeedbackReasons[idx];
+    }
     if (kind === "accepted" && cur !== "accepted") {
       state.acceptedTotal += 1;
       toast("已记录采纳，将优化后续推荐", "ok");
     }
     persistStats();
     renderResult();
-    const screen = $(`.screen[data-screen="result"]`);
-    screen.scrollTop = screen.scrollTop;
+    // 点「不采纳」后聚焦原因输入框，引导填写（非必填）
+    if (state.lastFeedback[idx] === "rejected") {
+      setTimeout(() => {
+        const box = $(`#rr_${idx}`);
+        if (box) { box.scrollIntoView({ block: "center", behavior: "smooth" }); box.focus({ preventScroll: true }); }
+      }, 80);
+    }
   }
 
   /* ============================================================
@@ -2212,10 +2262,15 @@ window.AIGIFT_DATA = {
 
     const items = state.lastResults.map((g, i) => {
       const fb = state.lastFeedback[i];
-      return {
+      const it = {
         name: g.name,
         status: fb === "accepted" ? "accepted" : fb === "rejected" ? "rejected" : "pending",
       };
+      // 不采纳原因（用户填写才写入），随历史持久化，供后续 prompt 注入负向偏好
+      if (it.status === "rejected" && state.lastFeedbackReasons[i]) {
+        it.rejectReason = state.lastFeedbackReasons[i];
+      }
+      return it;
     });
 
     const historyEntry = {
@@ -2606,6 +2661,10 @@ window.AIGIFT_DATA = {
         el.style.setProperty("--p", ((val / 1000) * 100) + "%");
       }
       refreshCompleteness();
+    }
+    // 不采纳原因输入（结果页）
+    if (el.dataset.rrIdx !== undefined) {
+      state.lastFeedbackReasons[+el.dataset.rrIdx] = el.value.trim();
     }
     // 新建对象模态中的输入
     if (el.id === "nrName" || (el.id && el.id.startsWith("nr_"))) {
