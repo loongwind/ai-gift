@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIGift · AI 礼物推荐（单文件版）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,500&family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" rel="stylesheet" />
+  <style>
+/* ============================================================
+   AIGift 原型 · Gift Atelier 暖色策展风
+   ============================================================ */
+
+/* ---------- 设计令牌 ---------- */
+:root {
+  --paper:      #FAF4E8;
+  --paper-2:    #F3EAD6;
+  --paper-3:    #EADFC6;
+  --ink:        #2B231E;
+  --ink-2:      #5C5147;
+  --ink-3:      #8E8275;
+  --rose:       #B23A4E;
+  --rose-d:     #8C2838;
+  --rose-l:     #E9C7CD;
+  --rose-bg:    #FBEDF0;
+  --gold:       #BE933A;
+  --gold-d:     #9A7322;
+  --gold-l:     #E6D29A;
+  --gold-bg:    #F7F0D9;
+  --sage:       #7E906F;
+  --sage-bg:    #E9EEE2;
+  --terra:      #C77A57;
+  --terra-bg:   #F6E4D9;
+  --line:       #E6DAC4;
+  --line-2:     #D6C7AA;
+  --sh: 92, 62, 40;
+
+  --ff-display: "Fraunces", "Noto Serif SC", Georgia, serif;
+  --ff-serif:   "Noto Serif SC", Georgia, serif;
+  --ff-body:    "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+  --ff-hand:    "LXGW WenKai", "Noto Serif SC", serif;
+
+  --r-sm: 10px; --r-md: 16px; --r-lg: 22px; --r-xl: 30px;
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+/* ---------- 基础重置 ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  font-family: var(--ff-body);
+  color: var(--ink);
+  background: #E7D9BE;
+  background-image:
+    radial-gradient(120% 80% at 12% 0%, #F4E6C6 0%, transparent 55%),
+    radial-gradient(120% 90% at 100% 100%, #E3C9A0 0%, transparent 55%),
+    linear-gradient(135deg, #EBDCBE 0%, #DCc8a0 100%);
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  letter-spacing: .01em;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; }
+svg { display: block; }
+
+/* 纸纹颗粒 */
+.grain {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  opacity: .05; pointer-events: none; z-index: 9999; mix-blend-mode: multiply;
+}
+
+/* ============================================================
+   桌面舞台
+   ============================================================ */
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 56px;
+  width: 100%; max-width: 1320px;
+  padding: 40px;
+}
+.stage__meta, .stage__legend { align-self: center; }
+.stage__meta { justify-self: end; text-align: right; max-width: 280px; }
+.stage__legend { justify-self: start; max-width: 240px; }
+
+.brandword {
+  font-family: var(--ff-display);
+  font-weight: 900;
+  font-size: 62px;
+  line-height: .95;
+  letter-spacing: -.03em;
+}
+.brandword__ai { color: var(--rose); }
+.brandword__gift { color: var(--ink); }
+.brandword__tag {
+  margin-top: 14px;
+  font-family: var(--ff-serif);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--ink);
+}
+.brandword__hint {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  letter-spacing: .03em;
+}
+
+.legend__cap {
+  font-family: var(--ff-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--gold-d);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-2);
+}
+.legend__list { list-style: none; }
+.legend__list li {
+  position: relative;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  padding-left: 18px;
+  margin-bottom: 12px;
+}
+.legend__list li::before {
+  content: ""; position: absolute; left: 0; top: 8px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--rose);
+  box-shadow: 0 0 0 3px var(--rose-bg);
+}
+.legend__list b { color: var(--ink); font-weight: 700; }
+
+/* 装饰：缎带曲线 */
+.stage::before, .stage::after {
+  content: ""; position: absolute; pointer-events: none;
+  width: 320px; height: 320px; border-radius: 50%;
+  filter: blur(8px); opacity: .4;
+}
+.stage::before {
+  left: -80px; top: -60px;
+  background: radial-gradient(circle, var(--rose-l), transparent 70%);
+}
+.stage::after {
+  right: -80px; bottom: -80px;
+  background: radial-gradient(circle, var(--gold-l), transparent 70%);
+}
+
+/* ============================================================
+   手机外框
+   ============================================================ */
+.phone {
+  position: relative;
+  width: 392px;
+  height: min(830px, 94vh);
+  background: linear-gradient(160deg, #2b2620, #16120e);
+  border-radius: 50px;
+  padding: 11px;
+  box-shadow:
+    0 2px 0 1px rgba(255,255,255,.05) inset,
+    0 0 0 1.5px rgba(0,0,0,.4),
+    0 40px 80px -20px rgba(var(--sh),.55),
+    0 18px 40px -12px rgba(var(--sh),.4);
+  flex-shrink: 0;
+}
+.phone__island {
+  position: absolute;
+  top: 20px; left: 50%; transform: translateX(-50%);
+  width: 104px; height: 30px;
+  background: #000; border-radius: 20px;
+  z-index: 60;
+}
+.phone__screen {
+  position: relative;
+  width: 100%; height: 100%;
+  background: var(--paper);
+  border-radius: 40px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* 状态栏 */
+.statusbar {
+  height: 46px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 30px 0;
+  color: var(--ink);
+  position: relative; z-index: 50;
+}
+.statusbar__time {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .02em;
+  margin-left: 4px;
+}
+.statusbar__icons { display: flex; align-items: center; gap: 6px; }
+.statusbar__icons svg { width: 17px; height: 12px; }
+
+/* 导航条 */
+.navhead {
+  height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  position: relative; z-index: 40;
+  border-bottom: .5px solid var(--line);
+  background: var(--paper);
+}
+.navhead__capsule {
+  display: flex; align-items: center; gap: 4px;
+  height: 32px; padding: 0 10px;
+  border: .5px solid var(--line-2);
+  border-radius: 16px;
+  background: rgba(255,255,255,.4);
+  box-shadow: 0 1px 2px rgba(var(--sh),.05);
+}
+.cap-ico { width: 17px; height: 17px; color: var(--ink-2); }
+.cap-div { width: .5px; height: 14px; background: var(--line-2); }
+.navhead__title {
+  flex: 1; text-align: center;
+  font-family: var(--ff-serif);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  margin-right: 64px;
+}
+.navhead__spacer { width: 64px; }
+
+/* ============================================================
+   应用主体 / 屏幕
+   ============================================================ */
+.app { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.screens { flex: 1; position: relative; min-height: 0; }
+
+.screen {
+  position: absolute; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 18px 18px 132px;
+  opacity: 0; visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity .3s var(--ease), transform .3s var(--ease), visibility .3s;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.is-active { opacity: 1; visibility: visible; transform: none; }
+.screen::-webkit-scrollbar { width: 0; }
+
+.screen--overlay {
+  z-index: 30;
+  background: var(--paper);
+  transform: translateY(100%);
+  transition: transform .42s var(--ease), opacity .3s var(--ease);
+  padding-bottom: 120px;
+}
+.screen--overlay.is-active { transform: none; opacity: 1; }
+
+/* tabBar */
+.tabbar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 68px;
+  display: flex;
+  background: rgba(250,244,232,.92);
+  backdrop-filter: blur(14px);
+  border-top: .5px solid var(--line);
+  z-index: 45;
+  padding-bottom: 4px;
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  color: var(--ink-3);
+  transition: color .2s var(--ease);
+  position: relative;
+}
+.tab__ico { width: 24px; height: 24px; transition: transform .25s var(--ease); }
+.tab span { font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+.tab[data-active="true"] { color: var(--rose); }
+.tab[data-active="true"] .tab__ico { transform: translateY(-2px) scale(1.08); }
+.tab[data-active="true"]::before {
+  content: ""; position: absolute; top: 0;
+  width: 22px; height: 3px; border-radius: 0 0 3px 3px;
+  background: var(--rose);
+}
+
+/* ============================================================
+   排版与通用组件
+   ============================================================ */
+.h-eyebrow {
+  font-family: var(--ff-display);
+  font-style: italic; font-weight: 500;
+  font-size: 12.5px; color: var(--gold-d);
+  letter-spacing: .04em;
+}
+.h-title {
+  font-family: var(--ff-serif);
+  font-weight: 900; font-size: 22px;
+  color: var(--ink); letter-spacing: .01em;
+  line-height: 1.25;
+}
+.h-sub { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+
+.section { margin-top: 22px; }
+.section__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section__head .h-title { font-size: 17px; }
+.section__head .link { font-size: 12.5px; color: var(--rose); font-weight: 500; }
+
+.num { font-family: var(--ff-display); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* 卡片 */
+.card {
+  background: #FFFBF1;
+  border: .5px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 2px 10px -4px rgba(var(--sh),.12);
+}
+.card--pad { padding: 16px; }
+
+/* 主按钮 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; padding: 0 22px;
+  border-radius: 14px;
+  font-weight: 700; font-size: 15.5px;
+  letter-spacing: .02em;
+  transition: transform .15s var(--ease), box-shadow .2s var(--ease), opacity .2s;
+}
+.btn--primary {
+  background: linear-gradient(180deg, var(--rose), var(--rose-d));
+  color: #fff;
+  box-shadow: 0 10px 22px -8px rgba(178,58,78,.65), 0 1px 0 rgba(255,255,255,.25) inset;
+}
+.btn--primary:active { transform: scale(.98); }
+.btn--primary[disabled] {
+  background: var(--paper-3); color: var(--ink-3);
+  box-shadow: none; cursor: not-allowed;
+}
+.btn--ghost {
+  background: rgba(255,255,255,.5); color: var(--ink);
+  border: .5px solid var(--line-2);
+}
+.btn--gold {
+  background: linear-gradient(180deg, var(--gold), var(--gold-d));
+  color: #fff;
+  box-shadow: 0 10px 22px -8px rgba(190,147,58,.55);
+}
+.btn--block { width: 100%; }
+.btn--sm { height: 34px; padding: 0 14px; font-size: 13px; border-radius: 10px; }
+
+/* 图标默认尺寸兜底（防止无尺寸 SVG 撑坏容器） */
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.btn--sm svg { width: 15px; height: 15px; }
+.reward__countdown svg { width: 14px; height: 14px; }
+.reward__seal svg { width: 34px; height: 34px; }
+.sheet svg { flex-shrink: 0; }
+
+/* ============================================================
+   推荐首页
+   ============================================================ */
+.hero {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+.hero__greet { font-size: 13px; color: var(--ink-3); }
+.hero__greet b { color: var(--ink); font-weight: 700; }
+
+/* 额度条 */
+.quota {
+  margin-top: 14px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: linear-gradient(105deg, var(--rose-bg), var(--gold-bg));
+  border: .5px solid var(--rose-l);
+}
+.quota__icon {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  background: linear-gradient(180deg, var(--rose), var(--rose-d));
+  display: grid; place-items: center; color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(178,58,78,.5);
+}
+.quota__icon svg { width: 20px; height: 20px; }
+.quota__txt { flex: 1; }
+.quota__num {
+  font-family: var(--ff-display); font-weight: 800;
+  font-size: 22px; color: var(--rose-d); line-height: 1;
+}
+.quota__num small { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-left: 3px; }
+.quota__label { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
+.quota__add {
+  flex-shrink: 0; height: 32px; padding: 0 12px;
+  border-radius: 10px; font-size: 12px; font-weight: 700;
+  background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; gap: 4px;
+}
+.quota__add svg { width: 14px; height: 14px; }
+
+/* 对象选择横滑 */
+.recipient-rail { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px; }
+.recipient-rail::-webkit-scrollbar { display: none; }
+.rchip {
+  flex-shrink: 0; width: 92px;
+  padding: 12px 8px;
+  border-radius: var(--r-md);
+  background: #FFFBF1;
+  border: 1.5px solid var(--line);
+  text-align: center;
+  transition: all .2s var(--ease);
+  position: relative;
+}
+.rchip__avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  margin: 0 auto 8px;
+  display: grid; place-items: center;
+  font-family: var(--ff-serif); font-weight: 700; font-size: 18px;
+  color: #fff;
+}
+.rchip__name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.rchip__rel { font-size: 10.5px; color: var(--ink-3); margin-top: 2px; }
+.rchip[data-active="true"] {
+  border-color: var(--rose);
+  background: var(--rose-bg);
+  box-shadow: 0 6px 14px -6px rgba(178,58,78,.4);
+}
+.rchip[data-active="true"]::after {
+  content: ""; position: absolute; top: 6px; right: 6px;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--rose);
+}
+.rchip--add {
+  border-style: dashed; border-color: var(--line-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--ink-3);
+}
+.rchip--add svg { width: 22px; height: 22px; margin-bottom: 4px; }
+
+/* 场景模板 */
+.tmpl-rail { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; }
+.tmpl-rail::-webkit-scrollbar { display: none; }
+.tmpl {
+  flex-shrink: 0; padding: 8px 14px;
+  border-radius: 20px;
+  background: #FFFBF1; border: .5px solid var(--line);
+  font-size: 12.5px; font-weight: 500; color: var(--ink-2);
+  display: flex; align-items: center; gap: 5px;
+  transition: all .2s var(--ease);
+}
+.tmpl svg { width: 14px; height: 14px; }
+.tmpl[data-active="true"] {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+.tmpl[data-active="true"] svg { color: var(--gold-l); }
+
+/* 表单组 */
+.field { margin-bottom: 14px; }
+.field__label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 700; color: var(--ink);
+  margin-bottom: 8px;
+}
+.field__label .req { color: var(--rose); font-size: 13px; }
+.field__label .opt {
+  font-family: var(--ff-display); font-style: italic; font-weight: 500;
+  font-size: 10.5px; color: var(--gold-d);
+  margin-left: auto;
+}
+.seg {
+  display: flex; flex-wrap: wrap; gap: 7px;
+}
+.seg__btn {
+  padding: 7px 13px; border-radius: 9px;
+  background: var(--paper-2); border: .5px solid var(--line);
+  font-size: 12.5px; color: var(--ink-2); font-weight: 500;
+  transition: all .18s var(--ease);
+}
+.seg__btn[data-active="true"] {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+.seg--multi .seg__btn[data-active="true"] {
+  background: var(--rose-bg); color: var(--rose-d); border-color: var(--rose-l);
+}
+.seg__btn .check {
+  display: inline-block; width: 11px; height: 11px;
+  vertical-align: -1px; margin-right: 3px; opacity: 0;
+  transition: opacity .15s;
+}
+.seg--multi .seg__btn[data-active="true"] .check { opacity: 1; }
+
+.input, .textarea {
+  width: 100%; padding: 11px 13px;
+  border-radius: 10px;
+  background: var(--paper-2);
+  border: .5px solid var(--line);
+  font-size: 13.5px; color: var(--ink);
+  transition: border-color .2s, background .2s;
+}
+.input::placeholder, .textarea::placeholder { color: var(--ink-3); }
+.input:focus, .textarea:focus {
+  outline: none; border-color: var(--rose); background: #FFFBF1;
+}
+.textarea { resize: none; min-height: 60px; line-height: 1.5; }
+
+.range {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px; background: var(--paper-2);
+  border: .5px solid var(--line);
+}
+.range__val { font-family: var(--ff-display); font-weight: 800; font-size: 16px; color: var(--rose-d); min-width: 86px; }
+.range input[type=range] {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--rose) var(--p,40%), var(--line-2) var(--p,40%));
+}
+.range input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--rose);
+  box-shadow: 0 2px 6px -1px rgba(var(--sh),.4);
+}
+
+/* 完整度 */
+.completeness {
+  position: sticky; top: -18px; z-index: 5;
+  margin: -18px -18px 14px;
+  padding: 14px 18px 12px;
+  background: linear-gradient(180deg, var(--paper) 70%, rgba(250,244,232,0));
+}
+.comp__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.comp__label { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.comp__label svg { width: 14px; height: 14px; color: var(--gold); }
+.comp__pct { font-family: var(--ff-display); font-weight: 800; font-size: 18px; color: var(--ink); }
+.comp__bar { height: 7px; border-radius: 6px; background: var(--paper-3); overflow: hidden; }
+.comp__fill {
+  height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, var(--gold), var(--rose));
+  width: 0; transition: width .5s var(--ease);
+}
+.comp__hint {
+  margin-top: 8px; font-size: 11.5px; color: var(--ink-2);
+  display: flex; align-items: center; gap: 5px;
+}
+.comp__badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 10px;
+  font-size: 11px; font-weight: 700;
+  background: var(--paper-3); color: var(--ink-2);
+  transition: all .3s var(--ease);
+}
+.comp__badge[data-tier="1"] { background: var(--gold-bg); color: var(--gold-d); }
+.comp__badge[data-tier="2"] { background: var(--rose-bg); color: var(--rose-d); }
+.comp__badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* 广告位 */
+.adslot {
+  margin: 16px 0;
+  height: 64px; border-radius: var(--r-md);
+  background: repeating-linear-gradient(135deg, var(--paper-3) 0 10px, var(--paper-2) 10px 20px);
+  border: .5px dashed var(--line-2);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  color: var(--ink-3); font-size: 11.5px; letter-spacing: .05em;
+}
+.adslot svg { width: 14px; height: 14px; }
+.adslot--banner { height: 56px; }
+
+/* 生成按钮浮层 */
+.generate-dock {
+  position: absolute; left: 0; right: 0; bottom: 68px;
+  padding: 10px 18px 14px;
+  background: linear-gradient(180deg, rgba(250,244,232,0), var(--paper) 35%);
+  z-index: 8;
+}
+
+/* ============================================================
+   印章式匹配分
+   ============================================================ */
+.seal {
+  position: relative;
+  width: 54px; height: 54px; flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-l), var(--gold) 70%, var(--gold-d));
+  display: grid; place-items: center;
+  box-shadow:
+    0 0 0 2px var(--paper),
+    0 0 0 3.5px var(--gold-d),
+    0 6px 12px -4px rgba(154,115,34,.6);
+  transform: rotate(-8deg);
+}
+.seal::before {
+  content: ""; position: absolute; inset: 4px;
+  border: 1px dashed rgba(255,255,255,.55);
+  border-radius: 50%;
+}
+.seal__num {
+  font-family: var(--ff-display); font-weight: 900;
+  font-size: 20px; color: #fff;
+  line-height: 1; text-shadow: 0 1px 0 rgba(0,0,0,.15);
+  display: flex; align-items: baseline; justify-content: center;
+}
+.seal__num small { font-size: 10px; font-weight: 700; }
+.seal__num svg, .seal > svg { width: 1em; height: 1em; }
+.seal--lg { width: 86px; height: 86px; transform: none; }
+.seal--lg .seal__num { font-size: 32px; }
+.seal--rose {
+  background: radial-gradient(circle at 35% 30%, var(--rose-l), var(--rose) 70%, var(--rose-d));
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--rose-d), 0 6px 12px -4px rgba(140,40,56,.6);
+}
+.seal--press { animation: sealPress .5s var(--ease); }
+
+/* ============================================================
+   推荐结果卡片
+   ============================================================ */
+.result-head { text-align: center; padding: 6px 0 16px; }
+.result-head .seal { margin: 0 auto 12px; }
+.result-head__title { font-family: var(--ff-serif); font-weight: 900; font-size: 20px; }
+.result-head__sub { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+
+.gift-card {
+  position: relative;
+  background: #FFFBF1;
+  border: .5px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px -8px rgba(var(--sh),.2);
+  animation: cardRise .5s var(--ease) both;
+}
+.gift-card__top { display: flex; gap: 14px; align-items: flex-start; }
+.gift-card__main { flex: 1; min-width: 0; }
+.gift-card__name {
+  font-family: var(--ff-serif); font-weight: 700; font-size: 17px;
+  color: var(--ink); line-height: 1.3;
+}
+.gift-card__price {
+  margin-top: 5px;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--ff-display); font-weight: 700; font-size: 14px;
+  color: var(--rose-d);
+}
+.gift-card__price svg { width: 13px; height: 13px; }
+.gift-card__tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.tag {
+  padding: 2px 8px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 500;
+}
+.tag--sage { background: var(--sage-bg); color: var(--sage); }
+.tag--gold { background: var(--gold-bg); color: var(--gold-d); }
+.tag--terra { background: var(--terra-bg); color: var(--terra); }
+
+/* 手写便签：推荐理由 */
+.note {
+  position: relative;
+  margin-top: 14px;
+  padding: 14px 14px 12px 16px;
+  background: linear-gradient(180deg, #FFF6E0, #FCEED0);
+  border-radius: 4px 14px 14px 14px;
+  transform: rotate(-.4deg);
+  box-shadow: 0 3px 8px -4px rgba(var(--sh),.25);
+}
+.note::before {
+  content: ""; position: absolute; top: -7px; left: 18px;
+  width: 38px; height: 14px;
+  background: rgba(178,58,78,.18);
+  transform: rotate(-3deg);
+  border-radius: 2px;
+}
+.note__label {
+  font-family: var(--ff-display); font-style: italic; font-weight: 500;
+  font-size: 11px; color: var(--gold-d); margin-bottom: 5px;
+}
+.note__txt {
+  font-family: var(--ff-hand);
+  font-size: 14px; line-height: 1.7; color: var(--ink);
+}
+.note__hint {
+  margin-top: 8px; font-size: 11px; color: var(--ink-3);
+  display: flex; align-items: center; gap: 5px;
+}
+.note__hint svg { width: 12px; height: 12px; color: var(--terra); }
+
+.gift-card__actions {
+  display: flex; gap: 8px; margin-top: 14px;
+  padding-top: 14px; border-top: 1px dashed var(--line);
+}
+.gact {
+  flex: 1; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  font-size: 12.5px; font-weight: 600;
+  background: var(--paper-2); color: var(--ink-2);
+  border: .5px solid var(--line);
+  transition: all .18s var(--ease);
+}
+.gact svg { width: 15px; height: 15px; }
+.gact[data-on="true"] { background: var(--sage-bg); color: var(--sage); border-color: var(--sage); }
+.gact--reject[data-on="true"] { background: var(--terra-bg); color: var(--terra); border-color: var(--terra); }
+.gact--save { flex: 0 0 44px; }
+.gact--save[data-on="true"] { color: var(--gold-d); background: var(--gold-bg); border-color: var(--gold-l); }
+
+.gift-card[data-status="accepted"] { border-color: var(--sage); background: #FAFCF6; }
+.gift-card[data-status="rejected"] { opacity: .55; }
+
+/* ============================================================
+   对象 / 历史 / 我的 列表
+   ============================================================ */
+.list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px;
+  background: #FFFBF1; border: .5px solid var(--line);
+  border-radius: var(--r-md); margin-bottom: 10px;
+  box-shadow: 0 2px 8px -4px rgba(var(--sh),.1);
+}
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  font-family: var(--ff-serif); font-weight: 700; font-size: 18px; color: #fff;
+}
+.avatar--lg { width: 64px; height: 64px; font-size: 24px; }
+.list-item__main { flex: 1; min-width: 0; }
+.list-item__name { font-weight: 700; font-size: 14.5px; color: var(--ink); }
+.list-item__meta { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+.list-item__end { flex-shrink: 0; text-align: right; }
+.list-item__end .num { font-size: 16px; color: var(--rose-d); }
+
+.hist-group__label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--ff-serif); font-weight: 700; font-size: 13px;
+  color: var(--ink-2); margin: 18px 0 10px;
+}
+.hist-group__label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.hist-card {
+  padding: 14px; background: #FFFBF1; border: .5px solid var(--line);
+  border-radius: var(--r-md); margin-bottom: 10px;
+}
+.hist-card__top { display: flex; justify-content: space-between; align-items: baseline; }
+.hist-card__who { font-weight: 700; font-size: 14px; }
+.hist-card__date { font-size: 11.5px; color: var(--ink-3); font-family: var(--ff-display); }
+.hist-card__items { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.hist-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
+.hist-item__dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.hist-item__dot[data-s="accepted"] { background: var(--sage); }
+.hist-item__dot[data-s="rejected"] { background: var(--terra); }
+.hist-item__dot[data-s="pending"] { background: var(--line-2); }
+
+/* 我的 */
+.profile-head {
+  text-align: center; padding: 8px 0 4px;
+}
+.profile-head .avatar { margin: 0 auto 12px; }
+.profile-head__name { font-family: var(--ff-serif); font-weight: 700; font-size: 18px; }
+.profile-head__id { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; font-family: var(--ff-display); }
+
+.stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin: 16px 0; }
+.stat {
+  text-align: center; padding: 12px 6px;
+  background: #FFFBF1; border: .5px solid var(--line); border-radius: var(--r-md);
+}
+.stat__num { font-family: var(--ff-display); font-weight: 800; font-size: 22px; color: var(--ink); }
+.stat__num.rose { color: var(--rose-d); }
+.stat__num.gold { color: var(--gold-d); }
+.stat__label { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
+
+.flow-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 0; border-bottom: .5px dashed var(--line);
+}
+.flow-item:last-child { border-bottom: none; }
+.flow-item__ico {
+  width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.flow-item__ico svg { width: 16px; height: 16px; }
+.flow-item__ico[data-t="add"] { background: var(--sage-bg); color: var(--sage); }
+.flow-item__ico[data-t="use"] { background: var(--rose-bg); color: var(--rose-d); }
+.flow-item__main { flex: 1; }
+.flow-item__title { font-size: 13px; font-weight: 600; }
+.flow-item__time { font-size: 11px; color: var(--ink-3); }
+.flow-item__amt { font-family: var(--ff-display); font-weight: 700; font-size: 14px; }
+.flow-item__amt.up { color: var(--sage); }
+.flow-item__amt.down { color: var(--rose-d); }
+
+.menu-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; background: #FFFBF1; border: .5px solid var(--line);
+  border-radius: var(--r-md); margin-bottom: 8px;
+}
+.menu-row__ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; }
+.menu-row__ico svg { width: 16px; height: 16px; color: #fff; }
+.menu-row__title { flex: 1; font-size: 14px; font-weight: 500; }
+.menu-row__arrow { color: var(--ink-3); }
+.menu-row__arrow svg { width: 16px; height: 16px; }
+
+/* ============================================================
+   模态 / Toast / Loader
+   ============================================================ */
+.modal-layer {
+  position: absolute; inset: 0; z-index: 80;
+  display: none;
+  background: rgba(30,22,16,.5);
+  backdrop-filter: blur(3px);
+  align-items: flex-end;
+}
+.modal-layer.is-open { display: flex; animation: fade .25s var(--ease); }
+.sheet {
+  width: 100%;
+  background: var(--paper);
+  border-radius: 26px 26px 0 0;
+  padding: 8px 18px 30px;
+  max-height: 85%; overflow-y: auto;
+  animation: sheetUp .35s var(--ease);
+  box-shadow: 0 -10px 30px -10px rgba(0,0,0,.3);
+}
+.sheet__handle { width: 38px; height: 4px; border-radius: 4px; background: var(--line-2); margin: 0 auto 16px; }
+.sheet__title { font-family: var(--ff-serif); font-weight: 700; font-size: 17px; text-align: center; margin-bottom: 4px; }
+.sheet__sub { font-size: 12.5px; color: var(--ink-2); text-align: center; margin-bottom: 18px; }
+
+.reward {
+  text-align: center; padding: 10px 0 6px;
+}
+.reward__seal { margin: 0 auto 16px; }
+.reward__prize {
+  font-family: var(--ff-display); font-weight: 800; font-size: 28px; color: var(--rose-d);
+  margin: 10px 0;
+}
+.reward__countdown {
+  font-size: 13px; color: var(--ink-2); margin: 14px 0;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px; background: var(--paper-2);
+}
+.reward__countdown .num { color: var(--rose-d); font-size: 16px; }
+
+.toast {
+  position: absolute; left: 50%; bottom: 96px;
+  transform: translate(-50%, 20px);
+  background: rgba(43,35,30,.95);
+  color: var(--paper);
+  padding: 11px 20px; border-radius: 24px;
+  font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+  opacity: 0; pointer-events: none; z-index: 90;
+  transition: opacity .25s var(--ease), transform .25s var(--ease);
+  box-shadow: 0 10px 24px -8px rgba(0,0,0,.4);
+  white-space: nowrap;
+}
+.toast svg { width: 16px; height: 16px; }
+.toast.is-show { opacity: 1; transform: translate(-50%, 0); }
+.toast__ico-ok { color: #8ED081; }
+.toast__ico-info { color: var(--gold-l); }
+
+.loader {
+  position: absolute; inset: 0; z-index: 85;
+  background: rgba(250,244,232,.96);
+  display: none; align-items: center; justify-content: center;
+}
+.loader.is-open { display: flex; }
+.loader__inner { text-align: center; }
+.loader__seal { margin: 0 auto 22px; animation: sealPress .8s var(--ease) infinite alternate; }
+.loader__text {
+  font-family: var(--ff-serif); font-weight: 700; font-size: 16px;
+  color: var(--ink); margin-bottom: 18px;
+}
+.loader__bar {
+  width: 180px; height: 4px; border-radius: 4px;
+  background: var(--paper-3); overflow: hidden; margin: 0 auto;
+}
+.loader__bar i {
+  display: block; height: 100%; width: 40%;
+  background: linear-gradient(90deg, var(--gold), var(--rose));
+  border-radius: 4px;
+  animation: loadSlide 1.1s var(--ease) infinite;
+}
+
+/* 插屏广告模拟 */
+.interstitial {
+  text-align: center; padding: 20px 0;
+}
+.interstitial__visual {
+  height: 160px; border-radius: var(--r-md); margin-bottom: 16px;
+  background:
+    radial-gradient(circle at 30% 30%, var(--rose-l), transparent 60%),
+    radial-gradient(circle at 70% 70%, var(--gold-l), transparent 60%),
+    linear-gradient(135deg, var(--rose-bg), var(--gold-bg));
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.interstitial__visual span {
+  font-family: var(--ff-display); font-weight: 800; font-size: 22px;
+  color: var(--rose-d); letter-spacing: .02em;
+}
+.interstitial__skip {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 11px; color: var(--ink-2);
+  background: rgba(255,255,255,.7); padding: 3px 9px; border-radius: 10px;
+}
+.interstitial__cta { font-size: 13px; color: var(--ink-2); margin-bottom: 16px; }
+
+/* ============================================================
+   动画
+   ============================================================ */
+@keyframes cardRise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes sealPress { from { transform: rotate(-8deg) scale(.7); opacity: .4; } to { transform: rotate(-8deg) scale(1); opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes loadSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+
+/* 响应式：窄屏隐藏左右说明 */
+@media (max-width: 1080px) {
+  .stage { grid-template-columns: 1fr; gap: 20px; padding: 20px; }
+  .stage__meta, .stage__legend { display: none; }
+}
+@media (max-width: 440px) {
+  body { align-items: stretch; }
+  .phone { width: 100%; height: 100vh; border-radius: 0; padding: 0; }
+  .phone__screen { border-radius: 0; }
+  .phone__island { display: none; }
+  .statusbar { padding-top: max(14px, env(safe-area-inset-top)); }
+}
+
+</style>
+</head>
+<body>
+  <!-- AIGift 单文件自包含版：CSS/JS 已全部内联，双击即可运行 -->
+  <!-- 桌面舞台：品牌 + 手机框 -->
+  <div class="stage">
+    <!-- 漂浮的品牌信息 -->
+    <aside class="stage__meta">
+      <div class="brandword">
+        <span class="brandword__ai">AI</span><span class="brandword__gift">Gift</span>
+      </div>
+      <p class="brandword__tag">礼物推荐 · 高保真原型</p>
+      <p class="brandword__hint">基于 PRD v1.0 构建 · 微信小程序体验模拟</p>
+    </aside>
+
+    <!-- 手机 -->
+    <div class="phone">
+      <div class="phone__island"></div>
+      <div class="phone__screen">
+        <!-- 状态栏 -->
+        <div class="statusbar">
+          <span class="statusbar__time" id="statusTime">9:41</span>
+          <span class="statusbar__icons">
+            <svg viewBox="0 0 20 12" class="ico-signal"><path d="M1 9h2v2H1zM5 7h2v4H5zM9 5h2v6H9zM13 3h2v8h-2zM17 1h2v10h-2z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 16 12" class="ico-wifi"><path d="M8 2.5c2.3 0 4.4.9 6 2.4l-1.4 1.4A6.5 6.5 0 008 4.5 6.5 6.5 0 003.4 6.3L2 4.9A8.5 8.5 0 018 2.5zm0 3c1.5 0 2.9.6 3.9 1.6l-1.4 1.4A3.5 3.5 0 008 7.5c-.9 0-1.8.4-2.5 1L4 7.1A4.95 4.95 0 018 5.5zm0 3c.8 0 1.5.3 2 .8L8 11.3 6 9.3c.5-.5 1.2-.8 2-.8z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 26 12" class="ico-batt"><rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="23.5" y="3.5" width="2" height="5" rx="1" fill="currentColor"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg>
+          </span>
+        </div>
+
+        <!-- 小程序导航条 -->
+        <div class="navhead">
+          <div class="navhead__capsule">
+            <svg viewBox="0 0 24 24" class="cap-ico"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="cap-div"></span>
+            <svg viewBox="0 0 24 24" class="cap-ico"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>
+          </div>
+          <div class="navhead__title" id="navTitle">礼物推荐</div>
+          <div class="navhead__spacer"></div>
+        </div>
+
+        <!-- 屏幕容器 -->
+        <main class="app" id="app">
+          <div class="screens">
+            <section class="screen" data-screen="recommend" data-title="礼物推荐"></section>
+            <section class="screen" data-screen="recipients" data-title="送礼对象"></section>
+            <section class="screen" data-screen="history" data-title="推荐历史"></section>
+            <section class="screen" data-screen="profile" data-title="我的"></section>
+            <!-- 结果页（覆盖层，无 tab） -->
+            <section class="screen screen--overlay" data-screen="result" data-title="推荐结果"></section>
+          </div>
+
+          <!-- tabBar -->
+          <nav class="tabbar">
+            <button class="tab" data-tab="recommend" data-active="true">
+              <svg viewBox="0 0 24 24" class="tab__ico"><path d="M12 3l2.09 4.26L19 8.27l-3 3.17.71 4.56L12 14.77l-4.71 1.23L8 11.44l-3-3.17 4.91-1.01L12 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              <span>推荐</span>
+            </button>
+            <button class="tab" data-tab="recipients">
+              <svg viewBox="0 0 24 24" class="tab__ico"><path d="M16 11a4 4 0 10-4-4 4 4 0 004 4zm-8 1a3 3 0 10-3-3 3 3 0 003 3zm0 2c-2.7 0-6 1.34-6 4v2h7v-2c0-1.5.6-2.8 1.6-3.7A9.6 9.6 0 008 14zm8 0c-.9 0-1.95.2-2.9.6 1.3 1 1.9 2.3 1.9 3.4v2H22v-2c0-2.66-3.3-4-6-4z" fill="currentColor"/></svg>
+              <span>对象</span>
+            </button>
+            <button class="tab" data-tab="history">
+              <svg viewBox="0 0 24 24" class="tab__ico"><path d="M13 3a9 9 0 109 9h-2a7 7 0 11-7-7v2l4-3.5L13 1v2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <span>历史</span>
+            </button>
+            <button class="tab" data-tab="profile">
+              <svg viewBox="0 0 24 24" class="tab__ico"><path d="M12 12a4.5 4.5 0 10-4.5-4.5A4.5 4.5 0 0012 12zm0 2c-4 0-8 2-8 6v1h16v-1c0-4-4-6-8-6z" fill="currentColor"/></svg>
+              <span>我的</span>
+            </button>
+          </nav>
+
+          <!-- 模态层 -->
+          <div class="modal-layer" id="modalLayer" aria-hidden="true"></div>
+          <!-- toast -->
+          <div class="toast" id="toast" aria-live="polite"></div>
+          <!-- 全屏 loading -->
+          <div class="loader" id="loader" aria-hidden="true">
+            <div class="loader__inner">
+              <div class="seal seal--lg loader__seal">
+                <span class="seal__num">AI</span>
+              </div>
+              <p class="loader__text">正在为你挑选礼物…</p>
+              <div class="loader__bar"><i></i></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <aside class="stage__legend">
+      <p class="legend__cap">提示</p>
+      <ul class="legend__list">
+        <li>填写信息越多，推荐越准（留意<b>完整度</b>）</li>
+        <li>额度用完可<b>看激励视频</b>或<b>分享</b>补充</li>
+        <li>点击底部 tab 切换：推荐 / 对象 / 历史 / 我的</li>
+      </ul>
+    </aside>
+  </div>
+
+  <!-- 纸纹纹理（SVG noise） -->
+  <svg class="grain" aria-hidden="true">
+    <filter id="paperNoise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+    <rect width="100%" height="100%" filter="url(#paperNoise)"/>
+  </svg>
+
+  <script>
+/* ============================================================
+   AIGift 原型 · 模拟数据与字典
+   ============================================================ */
+
+/* 头像配色（暖色系） */
+const AVATAR_COLORS = [
+  ["#B23A4E", "#8C2838"],
+  ["#BE933A", "#9A7322"],
+  ["#7E906F", "#5F6E52"],
+  ["#C77A57", "#A85B3A"],
+  ["#7B6BA8", "#5C4F86"],
+  ["#3F7E8C", "#2C5F6B"],
+  ["#A84A6F", "#823052"],
+  ["#5C8A5E", "#426A44"],
+];
+
+/* 字典（用于表单选项） */
+const DICT = {
+  relationship: [
+    "恋人", "配偶", "父母", "子女", "兄弟姐妹", "长辈亲戚",
+    "朋友", "闺蜜", "同学", "同事", "领导", "客户", "师生", "其他",
+  ],
+  gender: ["男", "女", "其他"],
+  ageRange: ["婴幼儿", "儿童", "少年", "青年", "中年", "中老年", "老年"],
+  closeness: ["普通", "熟悉", "亲密", "至亲"],
+  lifeStage: ["单身", "恋爱中", "已婚", "有娃", "备孕", "空巢"],
+  personality: [
+    "内向", "外向", "沉稳", "活泼", "浪漫", "务实", "文艺", "极客",
+    "宅", "感性", "理性", "传统", "新潮", "简约", "品质控", "爱惊喜",
+  ],
+  hobbies: [
+    "运动", "阅读", "音乐", "影视", "游戏", "旅行", "美食", "烹饪",
+    "摄影", "园艺", "手工", "宠物", "数码", "美妆", "收藏", "茶酒",
+    "户外", "二次元", "健身", "冥想",
+  ],
+  materialPrefs: ["实用型", "体验型", "仪式感", "收藏型", "颜值型", "品牌型"],
+  diet: ["无", "过敏", "素食", "忌口"],
+  living: ["独居", "合租", "家庭", "宿舍"],
+  giftType: ["实物", "虚拟", "体验", "DIY手工", "红包礼金", "不限"],
+  delivery: ["当面", "快递", "虚拟", "不限"],
+  occasion: [
+    "生日", "纪念日", "春节", "情人节", "母亲节", "父亲节", "教师节",
+    "中秋", "圣诞", "感谢", "道歉", "探望", "乔迁", "升职", "毕业",
+    "表白", "见面礼", "回礼", "无特殊",
+  ],
+};
+
+/* 必填字段（用于校验与完整度计算） */
+const REQUIRED = ["name", "gender", "ageRange", "relationship", "occasion", "budget"];
+/* 选填字段权重（用于完整度计算） */
+const OPTIONAL_FIELDS = [
+  "closeness", "occupation", "lifeStage", "personality", "hobbies",
+  "diet", "living", "materialPrefs", "taboos", "personalIdea",
+  "giftType", "delivery", "deadline",
+];
+
+/* 场景模板 */
+const SCENARIO_TEMPLATES = [
+  {
+    key: "birthday", label: "生日", icon: "🎂",
+    apply: { occasion: "生日", giftType: ["实物"], deadline: "", budget: 300 },
+  },
+  {
+    key: "valentine", label: "情人节", icon: "💌",
+    apply: { occasion: "情人节", giftType: ["实物", "体验"], relationship: "恋人", budget: 500, personality: ["浪漫"] },
+  },
+  {
+    key: "mother", label: "母亲节", icon: "🌷",
+    apply: { occasion: "母亲节", relationship: "父母", gender: "女", ageRange: "中年", budget: 400, materialPrefs: ["实用型", "品质控"] },
+  },
+  {
+    key: "anniversary", label: "纪念日", icon: "💍",
+    apply: { occasion: "纪念日", giftType: ["仪式感"] , budget: 800, personality: ["浪漫", "爱惊喜"] },
+  },
+  {
+    key: "thanks", label: "感谢", icon: "🙏",
+    apply: { occasion: "感谢", budget: 200, materialPrefs: ["实用型"] },
+  },
+  {
+    key: "love", label: "恋爱", icon: "❤️",
+    apply: { relationship: "恋人", personality: ["浪漫", "感性"], materialPrefs: ["仪式感", "颜值型"] },
+  },
+  {
+    key: "business", label: "商务", icon: "💼",
+    apply: { relationship: "客户", materialPrefs: ["品牌型", "品质控"], budget: 600, personality: ["沉稳"] },
+  },
+  {
+    key: "newhome", label: "乔迁", icon: "🏠",
+    apply: { occasion: "乔迁", giftType: ["实物"], materialPrefs: ["实用型"], budget: 300 },
+  },
+];
+
+/* 已保存的送礼对象 */
+const SEED_RECIPIENTS = [
+  {
+    id: "r1", name: "小雅", initial: "雅",
+    gender: "女", ageRange: "青年", age: 27,
+    relationship: "恋人", closeness: "亲密",
+    occupation: "互联网产品经理", lifeStage: "恋爱中",
+    personality: ["浪漫", "文艺", "爱惊喜"],
+    hobbies: ["阅读", "摄影", "美食", "旅行"],
+    materialPrefs: ["颜值型", "仪式感"],
+    diet: "无", living: "合租", taboos: "不喜欢太浮夸的颜色",
+    importantDates: [{ date: "2026-11-08", occasion: "生日", recurring: true }],
+    colorIdx: 0,
+  },
+  {
+    id: "r2", name: "妈妈", initial: "妈",
+    gender: "女", ageRange: "中老年",
+    relationship: "父母", closeness: "至亲",
+    occupation: "退休教师", lifeStage: "空巢",
+    personality: ["务实", "传统", "沉稳"],
+    hobbies: ["园艺", "茶酒", "烹饪"],
+    materialPrefs: ["实用型", "品质控"],
+    diet: "忌口", living: "家庭", taboos: "不要甜食",
+    importantDates: [
+      { date: "2026-08-02", occasion: "生日", recurring: true },
+      { date: "2026-05-10", occasion: "母亲节", recurring: true },
+    ],
+    colorIdx: 3,
+  },
+  {
+    id: "r3", name: "老王", initial: "王",
+    gender: "男", ageRange: "中年",
+    relationship: "领导", closeness: "熟悉",
+    occupation: "部门总监", lifeStage: "已婚",
+    personality: ["沉稳", "品质控"],
+    hobbies: ["茶酒", "运动", "户外"],
+    materialPrefs: ["品牌型", "实用型"],
+    diet: "无", living: "家庭", taboos: "",
+    importantDates: [],
+    colorIdx: 5,
+  },
+  {
+    id: "r4", name: "豆豆", initial: "豆",
+    gender: "男", ageRange: "儿童", age: 6,
+    relationship: "子女", closeness: "至亲",
+    occupation: "小学一年级", lifeStage: "有娃",
+    personality: ["活泼", "爱惊喜"],
+    hobbies: ["游戏", "二次元", "运动"],
+    materialPrefs: ["体验型"],
+    diet: "过敏", living: "家庭", taboos: "坚果过敏",
+    importantDates: [{ date: "2026-09-15", occasion: "生日", recurring: true }],
+    colorIdx: 2,
+  },
+];
+
+/* 礼物推荐池 —— 带标签与画像适配，供生成器筛选打分 */
+const GIFT_POOL = [
+  { name: "定制星空投影仪", tags: ["浪漫","颜值","创意"], types:["实物"], min:150, max:300, fit:["浪漫","文艺","爱惊喜"] },
+  { name: "手冲咖啡礼盒套装", tags: ["实用","品质"], types:["实物"], min:200, max:450, fit:["务实","品质控"] },
+  { name: "真丝印花丝巾", tags: ["颜值","品质","品牌"], types:["实物"], min:300, max:600, fit:["传统","品质控"], gender:"女" },
+  { name: "高端香薰蜡烛礼盒", tags: ["颜值","仪式感"], types:["实物"], min:200, max:400, fit:["浪漫","文艺","爱惊喜"] },
+  { name: "智能恒温杯垫套装", tags: ["实用","科技"], types:["实物"], min:150, max:300, fit:["务实","宅"] },
+  { name: "私人定制肖像插画", tags: ["创意","仪式感","颜值"], types:["虚拟","DIY手工"], min:200, max:500, fit:["文艺","爱惊喜","浪漫"] },
+  { name: "精品茶具礼盒", tags: ["品质","实用","传统"], types:["实物"], min:300, max:700, fit:["传统","沉稳","品质控"] },
+  { name: "亲子乐高探索套装", tags: ["体验","创意"], types:["实物"], min:200, max:400, fit:["活泼","爱惊喜"], age:["儿童","少年"] },
+  { name: "双人温泉 spa 套餐", tags: ["体验","仪式感"], types:["体验"], min:500, max:900, fit:["浪漫","爱惊喜","品质控"] },
+  { name: "限量版机械键盘", tags: ["科技","品质","品牌"], types:["实物"], min:400, max:800, fit:["极客","务实"], gender:"男" },
+  { name: "手工皮具长款钱包", tags: ["品质","实用","品牌"], types:["实物"], min:300, max:600, fit:["品质控","沉稳"] },
+  { name: "进口红酒礼盒", tags: ["品质","传统","品牌"], types:["实物"], min:300, max:800, fit:["沉稳","品质控","传统"] },
+  { name: "亲子烘焙体验课", tags: ["体验","创意"], types:["体验"], min:200, max:400, fit:["活泼","爱惊喜"], age:["儿童"] },
+  { name: "北欧风桌面绿植组合", tags: ["颜值","实用"], types:["实物"], min:100, max:250, fit:["文艺","简约","宅"] },
+  { name: "高档商务钢笔礼盒", tags: ["品牌","品质","实用"], types:["实物"], min:300, max:700, fit:["沉稳","品质控","品牌型"] },
+  { name: "真皮卡夹名片夹", tags: ["实用","品质","品牌"], types:["实物"], min:200, max:400, fit:["沉稳","品牌型","品质控"] },
+  { name: "定制回忆相册手账", tags: ["创意","仪式感","颜值"], types:["DIY手工"], min:100, max:300, fit:["文艺","浪漫","爱惊喜","感性"] },
+  { name: "颈椎按摩仪", tags: ["实用","健康","科技"], types:["实物"], min:250, max:500, fit:["务实","品质控","传统"], age:["中年","中老年","老年"] },
+  { name: "儿童科学实验套装", tags: ["体验","创意","实用"], types:["实物"], min:150, max:350, fit:["活泼"], age:["儿童","少年"] },
+  { name: "高定香水体验装", tags: ["颜值","品牌","仪式感"], types:["实物"], min:300, max:600, fit:["浪漫","品质控","颜值型"], gender:"女" },
+  { name: "户外露营天幕套装", tags: ["体验","实用"], types:["实物"], min:400, max:800, fit:["户外","活泼","务实"] },
+  { name: "书法文房四宝礼盒", tags: ["传统","品质","文艺"], types:["实物"], min:300, max:600, fit:["传统","文艺","沉稳"] },
+];
+
+/* 历史推荐记录 */
+const SEED_HISTORY = [
+  {
+    recipientId: "r1", recipientName: "小雅", date: "07-12",
+    occasion: "纪念日", budget: 800,
+    items: [
+      { name: "定制回忆相册手账", status: "accepted" },
+      { name: "双人温泉 spa 套餐", status: "accepted" },
+      { name: "高定香水体验装", status: "rejected" },
+    ],
+  },
+  {
+    recipientId: "r2", recipientName: "妈妈", date: "05-10",
+    occasion: "母亲节", budget: 400,
+    items: [
+      { name: "真丝印花丝巾", status: "accepted" },
+      { name: "颈椎按摩仪", status: "pending" },
+    ],
+  },
+  {
+    recipientId: "r3", recipientName: "老王", date: "04-22",
+    occasion: "感谢", budget: 600,
+    items: [
+      { name: "精品茶具礼盒", status: "accepted" },
+      { name: "高档商务钢笔礼盒", status: "rejected" },
+    ],
+  },
+];
+
+/* 额度流水 */
+const SEED_FLOW = [
+  { type: "use", title: "生成推荐 · 小雅", time: "今天 14:22", amt: -1 },
+  { type: "add", title: "观看激励视频", time: "今天 14:20", amt: 3 },
+  { type: "use", title: "生成推荐 · 妈妈", time: "昨天 10:05", amt: -1 },
+  { type: "add", title: "每日登录奖励", time: "昨天 09:00", amt: 1 },
+  { type: "add", title: "分享好友 · 小林", time: "前天 20:30", amt: 2 },
+  { type: "add", title: "新人福利", time: "07-28 21:15", amt: 3 },
+];
+
+/* 标签 → 颜色映射 */
+function tagClass(tag) {
+  const map = { 实用:"sage", 体验:"gold", 创意:"terra", 颜值:"gold", 品质:"sage", 品牌:"terra", 仪式感:"rose", 浪漫:"rose", 健康:"sage", 科技:"terra", 传统:"gold" };
+  return "tag--" + (map[tag] || "gold");
+}
+
+/* 预算区间文本 */
+function budgetText(v) {
+  if (v <= 50) return "¥0 – 50";
+  if (v <= 100) return "¥50 – 100";
+  if (v <= 300) return "¥100 – 300";
+  if (v <= 500) return "¥300 – 500";
+  if (v <= 1000) return "¥500 – 1000";
+  return "¥1000+";
+}
+
+window.AIGIFT_DATA = {
+  AVATAR_COLORS, DICT, REQUIRED, OPTIONAL_FIELDS,
+  SCENARIO_TEMPLATES, SEED_RECIPIENTS, GIFT_POOL,
+  SEED_HISTORY, SEED_FLOW, tagClass, budgetText,
+};
+
+</script>
+  <script>
+/* ============================================================
+   AIGift 原型 · 应用逻辑（状态 / 路由 / 渲染 / 交互）
+   - AI 推荐调用 DeepSeek API
+   - localStorage 数据持久化
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const {
+    AVATAR_COLORS, DICT, REQUIRED, OPTIONAL_FIELDS,
+    SCENARIO_TEMPLATES, SEED_RECIPIENTS, GIFT_POOL,
+    SEED_HISTORY, SEED_FLOW, tagClass, budgetText,
+  } = window.AIGIFT_DATA;
+
+  /* ============================================================
+     DeepSeek API 配置
+     —— 安全约定：仓库版本不内嵌 API Key（GitHub Push Protection 会拦截含密钥的提交）。
+     DEEPSEEK_API_KEY 留空时，首次生成推荐会弹出输入框，Key 保存在
+     localStorage（aigift_api_key），仅存于本机浏览器、不上传。
+     验证阶段如需硬编码可自行在下方粘贴，切勿提交回仓库。
+     ============================================================ */
+  const DEEPSEEK_API_KEY = "";
+  const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+  const DEEPSEEK_MODEL = "deepseek-chat";
+
+  function getApiKey() {
+    return (DEEPSEEK_API_KEY || lsGet(STORAGE_KEYS.apiKey, "") || "").trim();
+  }
+
+  /* ============================================================
+     localStorage 持久化层
+     ============================================================ */
+  const STORAGE_KEYS = {
+    recipients: "aigift_recipients",
+    history: "aigift_history",
+    quota: "aigift_quota",
+    flow: "aigift_flow",
+    stats: "aigift_stats",
+    dailyClaimed: "aigift_daily_claimed",
+    dailyClaimedDate: "aigift_daily_claimed_date",
+    apiKey: "aigift_api_key",
+  };
+
+  function lsGet(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.warn("lsGet error:", key, e);
+      return fallback;
+    }
+  }
+
+  function lsSet(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn("lsSet error:", key, e);
+    }
+  }
+
+  function persistRecipients() {
+    lsSet(STORAGE_KEYS.recipients, state.recipients);
+  }
+  function persistHistory() {
+    lsSet(STORAGE_KEYS.history, state.history);
+  }
+  function persistQuota() {
+    lsSet(STORAGE_KEYS.quota, state.quota);
+  }
+  function persistFlow() {
+    lsSet(STORAGE_KEYS.flow, state.flow);
+  }
+  function persistStats() {
+    lsSet(STORAGE_KEYS.stats, {
+      totalGenerated: state.totalGenerated,
+      acceptedTotal: state.acceptedTotal,
+    });
+  }
+  function persistDailyClaimed() {
+    lsSet(STORAGE_KEYS.dailyClaimed, state.dailyClaimed);
+    lsSet(STORAGE_KEYS.dailyClaimedDate, new Date().toDateString());
+  }
+
+  function todayDailyAlreadyClaimed() {
+    const claimed = lsGet(STORAGE_KEYS.dailyClaimed, false);
+    const claimedDate = lsGet(STORAGE_KEYS.dailyClaimedDate, "");
+    return claimed && claimedDate === new Date().toDateString();
+  }
+
+  /* ============================================================
+     从 localStorage 载入或使用种子数据初始化
+     ============================================================ */
+  function loadRecipients() {
+    const stored = lsGet(STORAGE_KEYS.recipients, null);
+    if (stored && Array.isArray(stored) && stored.length > 0) return stored;
+    return SEED_RECIPIENTS.map(r => ({
+      ...r,
+      personality: [...r.personality],
+      hobbies: [...r.hobbies],
+      materialPrefs: [...r.materialPrefs],
+      importantDates: [...(r.importantDates || [])],
+    }));
+  }
+
+  function loadHistory() {
+    const stored = lsGet(STORAGE_KEYS.history, null);
+    if (stored && Array.isArray(stored)) return stored;
+    return SEED_HISTORY.map(h => ({ ...h, items: [...h.items] }));
+  }
+
+  function loadQuota() {
+    return lsGet(STORAGE_KEYS.quota, 5);
+  }
+
+  function loadFlow() {
+    const stored = lsGet(STORAGE_KEYS.flow, null);
+    if (stored && Array.isArray(stored)) return stored;
+    return SEED_FLOW.map(f => ({ ...f }));
+  }
+
+  function loadStats() {
+    return lsGet(STORAGE_KEYS.stats, { totalGenerated: 8, acceptedTotal: 11 });
+  }
+
+  /* ---------- 状态 ---------- */
+  const DEFAULT_FORM = {
+    name: "", gender: "", ageRange: "", relationship: "",
+    closeness: "", occupation: "", lifeStage: "",
+    personality: [], hobbies: [], materialPrefs: [],
+    diet: "", living: "", taboos: "",
+    occasion: "", budget: 300, deadline: "",
+    giftType: [], delivery: "", count: 5,
+    personalIdea: "", supplement: "",
+  };
+
+  const state = {
+    route: "recommend",
+    quota: loadQuota(),
+    totalGenerated: loadStats().totalGenerated,
+    acceptedTotal: loadStats().acceptedTotal,
+    recipients: loadRecipients(),
+    currentRecipientId: null,
+    scenario: null,
+    form: { ...DEFAULT_FORM },
+    lastResults: null,
+    lastFeedback: {},
+    lastResultContext: null,
+    history: loadHistory(),
+    flow: loadFlow(),
+    interstitialCount: 0,
+    dailyClaimed: todayDailyAlreadyClaimed(),
+  };
+
+  /* ---------- DOM ---------- */
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const screens = $$(".screen");
+  const navTitle = $("#navTitle");
+  const modalLayer = $("#modalLayer");
+  const toastEl = $("#toast");
+  const loaderEl = $("#loader");
+
+  /* ---------- 图标 ---------- */
+  const ICO = {
+    gift: '<svg viewBox="0 0 24 24"><path d="M20 7h-2.5a3.5 3.5 0 00-5.5-4 3.5 3.5 0 00-5.5 4H4a1 1 0 00-1 1v3h18V8a1 1 0 00-1-1zm-9 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM3 13h7v9H5a2 2 0 01-2-2v-7zm11 9v-9h7v7a2 2 0 01-2 2h-5z" fill="currentColor"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><path d="M18 16a3 3 0 00-2.4 1.2l-7-4a3 3 0 000-2.4l7-4A3 3 0 1015 5l-7 4a3 3 0 100 6l7 4A3 3 0 1018 16z" fill="currentColor"/></svg>',
+    plus: '<svg viewBox="0 0 24 24"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z" fill="currentColor"/></svg>',
+    check: '<svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19.2 20 8.2l-1.5-1.5z" fill="currentColor"/></svg>',
+    close: '<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7l1.4-1.4L10.6 10.6l6.3-6.3z" fill="currentColor"/></svg>',
+    heart: '<svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 9 2.5 5.5 6 5.5c2 0 3.2 1.2 4 2.3.8-1.1 2-2.3 4-2.3 3.5 0 5 3.5 3.5 6.5C19 16.5 12 21 12 21z" fill="currentColor"/></svg>',
+    star: '<svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7L12 2z" fill="currentColor"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24"><path d="M17.6 6.4A8 8 0 104 12h2a6 6 0 101.8-4.2L8 8h4v2H5V4h2v2.3A8 8 0 0117.6 6.4z" fill="currentColor"/></svg>',
+    sparkle: '<svg viewBox="0 0 24 24"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2zM19 14l.9 2.6L22.5 17.5 19.9 18.4 19 21l-.9-2.6L15.5 17.5 18.1 16.6 19 14zM5 14l.7 2L7.7 16.7 5.7 17.4 5 19.4 4.3 17.4 2.3 16.7 4.3 16 5 14z" fill="currentColor"/></svg>',
+    coin: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15v2h-2v-2a4 4 0 01-2-1.2l1.4-1.4A2.5 2.5 0 1013 9a2.5 2.5 0 00-2.5 2.5h-2A4.5 4.5 0 0113 7v2a4 4 0 010 8z" fill="currentColor"/></svg>',
+    bag: '<svg viewBox="0 0 24 24"><path d="M7 7V5a5 5 0 0110 0v2h3v14H4V7h3zm2 0h6V5a3 3 0 00-6 0v2z" fill="currentColor"/></svg>',
+    bell: '<svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 00-6 6v4l-2 3v2h16v-2l-2-3V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z" fill="currentColor"/></svg>',
+    shield: '<svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3zm-1 13l5-5-1.4-1.4L11 12.2 9.4 10.6 8 12l3 3z" fill="currentColor"/></svg>',
+    info: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/></svg>',
+    msg: '<svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 012 2v9a2 2 0 01-2 2H8l-5 4V6a2 2 0 011-2z" fill="currentColor"/></svg>',
+    chev: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    pin: '<svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5c0 3 2 4 2 6h6c0-2 2-3 2-6a5 5 0 00-5-5zm-1 16h2v4h-2v-4z" fill="currentColor"/></svg>',
+    timer: '<svg viewBox="0 0 24 24"><path d="M12 2l1 2h3v2h-1.1A7 7 0 1112 21a7 7 0 01-6-4h2.2A5 5 0 0012 19a5 5 0 100-10 5 5 0 00-4.6 3H10v2H4v-6h2v2.5A7 7 0 0111 5.1V4h-1V2h2z" fill="currentColor"/></svg>',
+    edit: '<svg viewBox="0 0 24 24"><path d="M14.06 4.94l5 5L8 21H3v-5L14.06 4.94m0-2L1 16v7h7L23 8l-8.94-5.06z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  };
+
+  /* ---------- 工具 ---------- */
+  const avatarGrad = idx => {
+    const [a, b] = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    return `linear-gradient(135deg, ${a}, ${b})`;
+  };
+  const escape = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  let toastTimer;
+  function toast(msg, kind = "info") {
+    const ico = kind === "ok" ? `<span class="toast__ico-ok">${ICO.check}</span>` : `<span class="toast__ico-info">${ICO.sparkle}</span>`;
+    toastEl.innerHTML = `${ico}<span>${msg}</span>`;
+    toastEl.classList.add("is-show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("is-show"), 1900);
+  }
+
+  function openModal(html) {
+    modalLayer.innerHTML = `<div class="sheet">${html}</div>`;
+    modalLayer.classList.add("is-open");
+    modalLayer.setAttribute("aria-hidden", "false");
+  }
+  function closeModal() {
+    modalLayer.classList.remove("is-open");
+    modalLayer.setAttribute("aria-hidden", "true");
+    setTimeout(() => (modalLayer.innerHTML = ""), 300);
+  }
+
+  /* ============================================================
+     DeepSeek API 调用
+     ============================================================ */
+  function buildSystemPrompt() {
+    return `你是一位资深礼物顾问，拥有丰富的送礼经验和心理学知识。你擅长根据收礼人的画像特征、送礼场景和预算，推荐最合适、最有心意的礼物。
+
+你的推荐应该：
+1. 紧密匹配收礼人的性格、爱好和偏好
+2. 考虑送礼场合的合适性
+3. 在用户预算范围内
+4. 规避用户提到的禁忌/雷区
+5. 提供独特且有创意的建议，而非千篇一律的常见礼品
+
+请以 JSON 格式返回推荐结果，格式如下：
+{
+  "results": [
+    {
+      "name": "礼物名称",
+      "reason": "推荐理由（100-150字，结合收礼人画像详细说明）",
+      "priceRange": "¥100-200",
+      "purchaseHint": "购买渠道建议",
+      "tags": ["标签1", "标签2", "标签3"],
+      "matchScore": 88
+    }
+  ]
+}
+
+要求：
+- 每条推荐理由需具体、个性化，结合收礼人的特征来阐述
+- matchScore 为 60-98 的整数，越高越匹配
+- tags 包含 2-4 个关键词标签
+- priceRange 必须在用户预算范围内
+- 严格遵守用户提到的禁忌`;
+  }
+
+  function buildUserPrompt(formData, feedbackSummary) {
+    const parts = [];
+    parts.push("## 收礼人画像");
+    if (formData.name) parts.push(`- 昵称：${formData.name}`);
+    if (formData.gender) parts.push(`- 性别：${formData.gender}`);
+    if (formData.ageRange) parts.push(`- 年龄段：${formData.ageRange}`);
+    if (formData.relationship) parts.push(`- 与我的关系：${formData.relationship}`);
+    if (formData.closeness) parts.push(`- 亲密程度：${formData.closeness}`);
+    if (formData.occupation) parts.push(`- 职业/身份：${formData.occupation}`);
+    if (formData.lifeStage) parts.push(`- 人生阶段：${formData.lifeStage}`);
+    if (formData.personality && formData.personality.length) parts.push(`- 性格标签：${formData.personality.join("、")}`);
+    if (formData.hobbies && formData.hobbies.length) parts.push(`- 兴趣爱好：${formData.hobbies.join("、")}`);
+    if (formData.materialPrefs && formData.materialPrefs.length) parts.push(`- 物质偏好：${formData.materialPrefs.join("、")}`);
+    if (formData.diet) parts.push(`- 饮食禁忌：${formData.diet}`);
+    if (formData.living) parts.push(`- 居住情况：${formData.living}`);
+    if (formData.taboos) parts.push(`- ⚠️ 禁忌/雷区：${formData.taboos}`);
+
+    parts.push("\n## 送礼场景");
+    if (formData.occasion) parts.push(`- 送礼场合：${formData.occasion}`);
+    parts.push(`- 预算范围：${budgetText(formData.budget)}`);
+    if (formData.giftType && formData.giftType.length) parts.push(`- 期望礼物类型：${formData.giftType.join("、")}`);
+    if (formData.delivery) parts.push(`- 送达方式：${formData.delivery}`);
+    parts.push(`- 推荐数量：${formData.count || 5} 条`);
+
+    if (formData.personalIdea) parts.push(`\n## 个人想法\n${formData.personalIdea}`);
+    if (formData.supplement) parts.push(`\n## 补充信息\n${formData.supplement}`);
+
+    if (feedbackSummary) {
+      parts.push(`\n## 历史反馈摘要\n${feedbackSummary}`);
+    }
+
+    parts.push(`\n请推荐 ${formData.count || 5} 条礼物建议，严格按 JSON 格式返回。`);
+
+    return parts.join("\n");
+  }
+
+  function buildFeedbackSummary(recipientId) {
+    const pastRecs = state.history.filter(h => h.recipientId === recipientId);
+    if (!pastRecs.length) return null;
+    const accepted = [];
+    const rejected = [];
+    pastRecs.forEach(h => {
+      h.items.forEach(it => {
+        if (it.status === "accepted") accepted.push(it.name);
+        else if (it.status === "rejected") rejected.push(it.name);
+      });
+    });
+    const parts = [];
+    if (accepted.length) parts.push(`之前采纳过的礼物：${accepted.join("、")}（请避免重复推荐）`);
+    if (rejected.length) parts.push(`之前未采纳的礼物：${rejected.join("、")}（请避免推荐类似的）`);
+    return parts.length ? parts.join("\n") : null;
+  }
+
+  function parseDeepSeekResponse(content) {
+    if (!content) return null;
+    let cleaned = content.trim();
+    // 去除 markdown code fence
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
+    // 尝试提取 JSON
+    const jsonStart = cleaned.indexOf("{");
+    const jsonEnd = cleaned.lastIndexOf("}");
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    }
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.results && Array.isArray(parsed.results)) {
+        return parsed.results.map(g => ({
+          name: g.name || "未知礼物",
+          reason: g.reason || "这是一份用心的推荐",
+          priceRange: g.priceRange || budgetText(state.form.budget),
+          purchaseHint: g.purchaseHint || "可在电商平台搜索购买",
+          tags: Array.isArray(g.tags) ? g.tags : ["推荐"],
+          matchScore: typeof g.matchScore === "number" ? g.matchScore : 75,
+        }));
+      }
+    } catch (e) {
+      console.warn("JSON parse error:", e);
+    }
+    return null;
+  }
+
+  async function callDeepSeek(formData, feedbackSummary) {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("未配置 DeepSeek API Key");
+    const systemPrompt = buildSystemPrompt();
+    const userPrompt = buildUserPrompt(formData, feedbackSummary);
+
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2000,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`DeepSeek API ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    const results = parseDeepSeekResponse(content);
+    if (!results || results.length === 0) {
+      throw new Error("AI 返回数据解析失败");
+    }
+    return results;
+  }
+
+  /* ============================================================
+     API Key 输入模态（Key 缺失时引导，保存在本机 localStorage）
+     ============================================================ */
+  function openApiKeyModal(onSaved) {
+    openModal(`
+      <div class="sheet__handle"></div>
+      <div class="sheet__title">配置 DeepSeek API Key</div>
+      <div class="sheet__sub">Key 仅保存在<b style="color:var(--rose-d)">本机浏览器</b>（localStorage），不会上传或随文件分发</div>
+      <div class="field" style="margin-top:14px">
+        <div class="field__label"><span class="req">*</span>API Key</div>
+        <input class="input" id="apikey_input" type="password" placeholder="sk-..." autocomplete="off" />
+      </div>
+      <button class="btn btn--primary btn--block" data-action="save-apikey" style="margin-top:10px">${ICO.check}保存并继续</button>
+      <button class="btn btn--ghost btn--block" style="margin-top:10px" data-action="close-modal">稍后再说</button>
+    `);
+    state._apiKeyCallback = onSaved || null;
+    setTimeout(() => { const el = $("#apikey_input"); if (el) el.focus(); }, 350);
+  }
+
+  function saveApiKey() {
+    const el = $("#apikey_input");
+    const val = el ? el.value.trim() : "";
+    if (!val || !val.startsWith("sk-")) {
+      toast("请输入有效的 API Key（以 sk- 开头）");
+      return;
+    }
+    lsSet(STORAGE_KEYS.apiKey, val);
+    const cb = state._apiKeyCallback;
+    state._apiKeyCallback = null;
+    closeModal();
+    toast("API Key 已保存到本机", "ok");
+    if (cb) cb();
+  }
+
+  /* ============================================================
+     Loader 状态管理
+     ============================================================ */
+  let loaderTextTimer = null;
+  function showLoader(text) {
+    const txtEl = $(".loader__text");
+    if (txtEl) txtEl.textContent = text || "正在为你挑选礼物…";
+    loaderEl.classList.add("is-open");
+  }
+
+  function updateLoaderText(text) {
+    const txtEl = $(".loader__text");
+    if (txtEl) txtEl.textContent = text;
+  }
+
+  function hideLoader() {
+    loaderEl.classList.remove("is-open");
+    if (loaderTextTimer) {
+      clearInterval(loaderTextTimer);
+      loaderTextTimer = null;
+    }
+  }
+
+  function startLoaderAnimation() {
+    const messages = [
+      "正在分析 TA 的画像…",
+      "匹配性格与爱好…",
+      "筛选预算范围内的礼物…",
+      "AI 正在生成推荐方案…",
+      "精心撰写推荐理由…",
+    ];
+    let idx = 0;
+    updateLoaderText(messages[0]);
+    loaderTextTimer = setInterval(() => {
+      idx = (idx + 1) % messages.length;
+      updateLoaderText(messages[idx]);
+    }, 2000);
+  }
+
+  /* ---------- 完整度计算 ---------- */
+  function computeCompleteness() {
+    const f = state.form;
+    const reqFilled = REQUIRED.filter(k => {
+      const v = f[k];
+      return v !== "" && !(Array.isArray(v) && v.length === 0);
+    }).length;
+    const optFilled = OPTIONAL_FIELDS.filter(k => {
+      const v = f[k];
+      return v !== "" && !(Array.isArray(v) && v.length === 0);
+    }).length;
+    const pct = Math.round((reqFilled / REQUIRED.length) * 42 + (optFilled / OPTIONAL_FIELDS.length) * 58);
+    const tier = pct >= 85 ? 2 : pct >= 60 ? 1 : 0;
+    return { pct: Math.min(100, pct), tier, reqMissing: REQUIRED.length - reqFilled };
+  }
+
+  function refreshCompleteness() {
+    const { pct, tier, reqMissing } = computeCompleteness();
+    const bar = $("#compFill");
+    const pctEl = $("#compPct");
+    const badge = $("#compBadge");
+    const hint = $("#compHint");
+    const genBtn = $("#genBtn");
+    if (!bar) return;
+    bar.style.width = pct + "%";
+    pctEl.textContent = pct + "%";
+    badge.setAttribute("data-tier", tier);
+    badge.innerHTML = `<span class="dot"></span>${tier === 2 ? "高精准推荐 🌟" : tier === 1 ? "精准推荐 ✨" : "标准推荐"}`;
+    if (reqMissing > 0) {
+      hint.innerHTML = `还差 <b style="color:var(--rose-d)">${reqMissing}</b> 个必填项即可生成 · 填越多越准`;
+      if (genBtn) genBtn.disabled = true;
+    } else {
+      const remain = 100 - pct;
+      hint.innerHTML = remain > 10
+        ? `信息越完整，推荐越精准 · 再填几项可达高精准 <span style="color:var(--gold-d)">↑</span>`
+        : `完美！信息非常充分，将获得高精准推荐 🌟`;
+      if (genBtn) genBtn.disabled = state.quota <= 0 && state.route === "recommend";
+    }
+    const range = $("#budgetRange");
+    if (range) {
+      const p = ((state.form.budget - 0) / 1000) * 100;
+      range.style.setProperty("--p", p + "%");
+    }
+  }
+
+  /* ============================================================
+     路由
+     ============================================================ */
+  function go(route) {
+    state.route = route;
+    screens.forEach(s => s.classList.toggle("is-active", s.dataset.screen === route));
+    $$(".tab").forEach(t => t.setAttribute("data-active", t.dataset.tab === route ? "true" : "false"));
+    const active = $(`.screen[data-screen="${route}"]`);
+    if (active) { active.scrollTop = 0; navTitle.textContent = active.dataset.title; }
+    if (route === "recipients") renderRecipients();
+    if (route === "history") renderHistory();
+    if (route === "profile") renderProfile();
+    if (route === "recommend") refreshCompleteness();
+    setDockVisible();
+  }
+
+  function setDockVisible() {
+    const d = document.getElementById("genDock");
+    if (!d) return;
+    const overlayActive = !!document.querySelector(".screen--overlay.is-active");
+    d.style.display = state.route === "recommend" && !overlayActive ? "" : "none";
+  }
+
+  function openResult() {
+    const r = $(`.screen[data-screen="result"]`);
+    r.classList.add("is-active");
+    r.scrollTop = 0;
+    navTitle.textContent = "推荐结果";
+    $$(".tab").forEach(t => t.setAttribute("data-active", "false"));
+    setDockVisible();
+  }
+  function closeResult() {
+    $(`.screen[data-screen="result"]`).classList.remove("is-active");
+    go("recommend");
+  }
+
+  /* ============================================================
+     推荐首页渲染
+     ============================================================ */
+  function renderRecommend() {
+    const f = state.form;
+    const screen = $(`.screen[data-screen="recommend"]`);
+    const savedScroll = screen ? screen.scrollTop : 0;
+    const requiredSet = new Set(REQUIRED);
+
+    const seg = (field, options, { multi = false } = {}) => options.map(o => {
+      const val = f[field];
+      const on = multi ? (val || []).includes(o) : val === o;
+      return `<button class="seg__btn${multi ? " seg--multi__btn" : ""}" data-seg="${field}" data-val="${o}" data-multi="${multi}" data-active="${on}">${multi ? '<span class="check">' + ICO.check + "</span>" : ""}${o}</button>`;
+    }).join("");
+
+    const fieldLabel = (label, field, { required = false } = {}) =>
+      `<div class="field__label">${required ? '<span class="req">*</span>' : ""}${label}${!required && !requiredSet.has(field) ? `<span class="opt">+ 精准度</span>` : ""}</div>`;
+
+    screen.innerHTML = `
+      <!-- 完整度 -->
+      <div class="completeness">
+        <div class="comp__top">
+          <span class="comp__label">${ICO.sparkle}推荐完整度</span>
+          <span class="comp__pct" id="compPct">0%</span>
+        </div>
+        <div class="comp__bar"><div class="comp__fill" id="compFill"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px">
+          <span class="comp__hint" id="compHint"></span>
+          <span class="comp__badge" id="compBadge" data-tier="0"><span class="dot"></span>标准推荐</span>
+        </div>
+      </div>
+
+      <!-- 问候 + 额度 -->
+      <div class="hero">
+        <div>
+          <div class="h-eyebrow">Hi, 为 TA 挑一份走心的礼物</div>
+        </div>
+      </div>
+      <div class="quota">
+        <div class="quota__icon">${ICO.gift}</div>
+        <div class="quota__txt">
+          <div class="quota__num"><span id="quotaNum">${state.quota}</span><small>次免费额度</small></div>
+          <div class="quota__label">用完可看视频 / 分享 / 登录补充</div>
+        </div>
+        <button class="quota__add" data-action="open-reward">${ICO.play}+3</button>
+      </div>
+
+      <!-- 送礼对象 -->
+      <div class="section">
+        <div class="section__head"><div class="h-title">送给谁</div><span class="link" data-action="go-recipients">管理 ›</span></div>
+        <div class="recipient-rail" id="recipientRail"></div>
+      </div>
+
+      <!-- 场景模板 -->
+      <div class="section">
+        <div class="section__head"><div class="h-title">快速场景</div><span class="h-sub" style="font-size:11.5px">一键预填</span></div>
+        <div class="tmpl-rail" id="tmplRail"></div>
+      </div>
+
+      <!-- 表单 -->
+      <div class="section">
+        <div class="section__head"><div class="h-title">对象画像</div></div>
+
+        <div class="field">
+          ${fieldLabel("称呼 / 昵称", "name", { required: true })}
+          <input class="input" data-field="name" value="${escape(f.name)}" placeholder="如：小雅、妈妈" />
+        </div>
+        <div class="field">${fieldLabel("关系", "relationship", { required: true })}<div class="seg">${seg("relationship", DICT.relationship)}</div></div>
+        <div class="field">${fieldLabel("性别", "gender", { required: true })}<div class="seg">${seg("gender", DICT.gender)}</div></div>
+        <div class="field">${fieldLabel("年龄段", "ageRange", { required: true })}<div class="seg">${seg("ageRange", DICT.ageRange)}</div></div>
+        <div class="field">${fieldLabel("亲密程度", "closeness")}<div class="seg">${seg("closeness", DICT.closeness)}</div></div>
+        <div class="field">${fieldLabel("职业 / 身份", "occupation")}<input class="input" data-field="occupation" value="${escape(f.occupation)}" placeholder="如：产品经理、学生" /></div>
+        <div class="field">${fieldLabel("人生阶段", "lifeStage")}<div class="seg">${seg("lifeStage", DICT.lifeStage)}</div></div>
+        <div class="field">${fieldLabel("性格标签", "personality")}<div class="seg seg--multi">${seg("personality", DICT.personality, { multi: true })}</div></div>
+        <div class="field">${fieldLabel("兴趣爱好", "hobbies")}<div class="seg seg--multi">${seg("hobbies", DICT.hobbies, { multi: true })}</div></div>
+        <div class="field">${fieldLabel("物质偏好", "materialPrefs")}<div class="seg seg--multi">${seg("materialPrefs", DICT.materialPrefs, { multi: true })}</div></div>
+        <div class="field">${fieldLabel("饮食禁忌", "diet")}<div class="seg">${seg("diet", DICT.diet)}</div></div>
+        <div class="field">${fieldLabel("居住情况", "living")}<div class="seg">${seg("living", DICT.living)}</div></div>
+        <div class="field">
+          ${fieldLabel("⚠️ 禁忌 / 雷区", "taboos")}
+          <textarea class="textarea" data-field="taboos" placeholder="颜色 / 数字 / 寓意 / 品类（AI 会规避）">${escape(f.taboos)}</textarea>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section__head"><div class="h-title">这次送礼</div></div>
+        <div class="field">${fieldLabel("送礼场合", "occasion", { required: true })}<div class="seg">${seg("occasion", DICT.occasion)}</div></div>
+        <div class="field">
+          ${fieldLabel("预算区间", "budget", { required: true })}
+          <div class="range">
+            <span class="range__val" id="budgetVal">${budgetText(f.budget)}</span>
+            <input type="range" id="budgetRange" min="0" max="1000" step="50" value="${f.budget}" data-field="budget" />
+          </div>
+        </div>
+        <div class="field">${fieldLabel("期望礼物类型", "giftType")}<div class="seg seg--multi">${seg("giftType", DICT.giftType, { multi: true })}</div></div>
+        <div class="field">${fieldLabel("送达方式", "delivery")}<div class="seg">${seg("delivery", DICT.delivery)}</div></div>
+        <div class="field">${fieldLabel("推荐条数", "count")}<div class="seg">${[3,5,8,10].map(n=>`<button class="seg__btn" data-seg="count" data-val="${n}" data-active="${f.count===n}">${n} 条</button>`).join("")}</div></div>
+        <div class="field">
+          ${fieldLabel("个人想法 / 灵感", "personalIdea")}
+          <textarea class="textarea" data-field="personalIdea" placeholder="已有初步想法？告诉 AI 让它更懂你">${escape(f.personalIdea)}</textarea>
+        </div>
+        <div class="field">
+          ${fieldLabel("其他补充", "supplement")}
+          <textarea class="textarea" data-field="supplement" placeholder="任何额外信息">${escape(f.supplement)}</textarea>
+        </div>
+      </div>
+
+      <div class="adslot adslot--banner">${ICO.bag}Banner 广告位</div>
+    `;
+
+    renderRecipientRail();
+    renderTmplRail();
+    refreshCompleteness();
+    if (screen) screen.scrollTop = savedScroll;
+  }
+
+  function renderRecipientRail() {
+    const rail = $("#recipientRail");
+    if (!rail) return;
+    const cur = state.currentRecipientId;
+    let html = state.recipients.map(r => `
+      <div class="rchip" data-action="select-recipient" data-id="${r.id}" data-active="${r.id === cur}">
+        <div class="rchip__avatar" style="background:${avatarGrad(r.colorIdx)}">${escape(r.initial)}</div>
+        <div class="rchip__name">${escape(r.name)}</div>
+        <div class="rchip__rel">${escape(r.relationship)}</div>
+      </div>`).join("");
+    html += `<div class="rchip rchip--add" data-action="new-recipient">${ICO.plus}<span style="font-size:11.5px">新建</span></div>`;
+    rail.innerHTML = html;
+  }
+
+  function renderTmplRail() {
+    const rail = $("#tmplRail");
+    if (!rail) return;
+    rail.innerHTML = SCENARIO_TEMPLATES.map(t => `
+      <button class="tmpl" data-action="apply-template" data-key="${t.key}" data-active="${state.scenario === t.key}">
+        <span>${t.icon}</span><span>${t.label}</span>
+      </button>`).join("");
+  }
+
+  /* ---------- 选对象 / 模板 ---------- */
+  function selectRecipient(id) {
+    const r = state.recipients.find(x => x.id === id);
+    if (!r) return;
+    state.currentRecipientId = id;
+    state.scenario = null;
+    state.form = {
+      ...DEFAULT_FORM,
+      name: r.name, gender: r.gender, ageRange: r.ageRange,
+      relationship: r.relationship, closeness: r.closeness || "",
+      occupation: r.occupation || "", lifeStage: r.lifeStage || "",
+      personality: [...r.personality], hobbies: [...r.hobbies],
+      materialPrefs: [...r.materialPrefs], diet: r.diet || "",
+      living: r.living || "", taboos: r.taboos || "",
+    };
+    renderRecommend();
+    toast(`已载入「${r.name}」的画像`, "ok");
+  }
+
+  function applyTemplate(key) {
+    const t = SCENARIO_TEMPLATES.find(x => x.key === key);
+    if (!t) return;
+    state.scenario = key;
+    const a = t.apply;
+    Object.entries(a).forEach(([k, v]) => {
+      if (Array.isArray(v)) state.form[k] = [...v];
+      else state.form[k] = v;
+    });
+    renderRecommend();
+    toast(`已套用「${t.label}」模板`, "ok");
+  }
+
+  /* ============================================================
+     本地礼物池兜底逻辑（AI 失败时使用）
+     ============================================================ */
+  function budgetBand(v) {
+    if (v <= 50) return { min: 0, max: 50 };
+    if (v <= 100) return { min: 50, max: 100 };
+    if (v <= 300) return { min: 100, max: 300 };
+    if (v <= 500) return { min: 300, max: 500 };
+    if (v <= 1000) return { min: 500, max: 1000 };
+    return { min: 1000, max: 3000 };
+  }
+
+  function generateResultsLocal() {
+    const f = state.form;
+    const band = budgetBand(f.budget);
+    const count = f.count || 5;
+    const fitTokens = [...(f.personality || []), ...(f.hobbies || []), ...(f.materialPrefs || [])];
+    const typeFilter = (f.giftType || []).filter(t => t !== "不限");
+
+    let pool = GIFT_POOL.filter(g => {
+      if (typeFilter.length && !g.types.some(t => typeFilter.includes(t))) return false;
+      if (g.max < band.min * 0.6 || g.min > band.max * 1.4) return false;
+      if (g.gender && f.gender && g.gender !== f.gender) return false;
+      if (g.age && f.ageRange && !g.age.includes(f.ageRange)) return false;
+      if (f.taboos && /甜食|坚果/.test(f.taboos) && /食品|零食|糕点/.test(g.name)) return false;
+      return true;
+    });
+
+    const scored = pool.map(g => {
+      let s = 64 + Math.floor(Math.random() * 6);
+      g.fit.forEach(t => { if (fitTokens.includes(t)) s += 9; });
+      return { ...g, _score: Math.min(98, s) };
+    }).sort((a, b) => b._score - a._score);
+
+    let picks = scored.slice(0, count);
+    if (picks.length < count) {
+      const used = new Set(picks.map(p => p.name));
+      GIFT_POOL.forEach(g => {
+        if (picks.length >= count) return;
+        if (used.has(g.name)) return;
+        if (g.gender && f.gender && g.gender !== f.gender) return;
+        picks.push({ ...g, _score: 68 + Math.floor(Math.random() * 12) });
+        used.add(g.name);
+      });
+    }
+
+    return picks.map(g => {
+      const lo = Math.max(g.min, Math.floor(band.min * 0.8));
+      const hi = Math.min(g.max, Math.ceil(band.max * 1.1));
+      const hints = ["京东 / 天猫", "线下精品店", "品牌官方定制", "小红书好物馆", "线下商场"];
+      return {
+        name: g.name,
+        matchScore: g._score,
+        priceRange: `¥${lo} – ${hi}`,
+        purchaseHint: hints[Math.floor(Math.random() * hints.length)],
+        tags: g.tags,
+        reason: buildReasonLocal(g, f),
+      };
+    });
+  }
+
+  function buildReasonLocal(g, f) {
+    const parts = [];
+    const rel = f.relationship;
+    const occ = f.occasion || "送礼";
+    if (rel && /恋人|配偶|恋爱/.test(rel)) {
+      parts.push(`考虑到你们是${rel}关系，${occ}这样的时刻最适合传递心意，`);
+    } else if (rel) {
+      parts.push(`送给${rel}的${occ}礼物，讲究的是得体与贴心，`);
+    } else {
+      parts.push(`这份${occ}礼物，`);
+    }
+    if (f.personality && f.personality.length) {
+      parts.push(`结合 TA「${f.personality.slice(0, 2).join("、")}」的性格，`);
+    }
+    if (f.hobbies && f.hobbies.length) {
+      parts.push(`以及 TA 对「${f.hobbies.slice(0, 2).join("、")}」的热爱，`);
+    }
+    if (g.tags.includes("实用")) parts.push(`这款实用又日常，能被高频使用；`);
+    else if (g.tags.includes("仪式感") || g.tags.includes("浪漫")) parts.push(`这款自带仪式感，足以制造一个难忘的瞬间；`);
+    else if (g.tags.includes("品质") || g.tags.includes("品牌")) parts.push(`品质与品牌兼顾，送出手有分量；`);
+    else if (g.tags.includes("创意")) parts.push(`独特而有创意，能体现你的用心；`);
+    if (f.taboos) parts.push(`并已为你规避了 TA 的忌讳。`);
+    else parts.push(`价位也贴合你的预算。`);
+    return parts.join("");
+  }
+
+  /* ============================================================
+     生成推荐（AI + 本地兜底）
+     ============================================================ */
+  async function handleGenerate() {
+    const { reqMissing } = computeCompleteness();
+    if (reqMissing > 0) {
+      toast(`还差 ${reqMissing} 个必填项`);
+      return;
+    }
+    if (state.quota <= 0) {
+      openReward(true);
+      return;
+    }
+    // Key 缺失：先引导输入（本机保存），输入成功后继续本次生成
+    if (!getApiKey()) {
+      openApiKeyModal(() => handleGenerate());
+      return;
+    }
+
+    // 扣减额度
+    state.quota -= 1;
+    state.totalGenerated += 1;
+    addFlow("use", `生成推荐 · ${state.form.name || "对象"}`, -1);
+    persistQuota();
+    persistFlow();
+    persistStats();
+    updateQuotaUI();
+
+    // 显示 loader
+    showLoader("正在分析 TA 的画像…");
+    startLoaderAnimation();
+
+    // 记录当前的表单快照（用于写入历史）
+    const formSnapshot = { ...state.form };
+    const recipientId = state.currentRecipientId;
+    const recipientName = state.form.name || "TA";
+    const feedbackSummary = recipientId ? buildFeedbackSummary(recipientId) : null;
+
+    try {
+      const results = await callDeepSeek(formSnapshot, feedbackSummary);
+      state.lastResults = results;
+      state.lastFeedback = {};
+      state.lastResultContext = {
+        recipientId,
+        recipientName,
+        occasion: formSnapshot.occasion,
+        budget: formSnapshot.budget,
+        formSnapshot,
+      };
+      hideLoader();
+      renderResult();
+      openResult();
+      state.interstitialCount += 1;
+      if (state.interstitialCount > 1 && state.interstitialCount <= 3) {
+        setTimeout(openInterstitial, 600);
+      }
+      updateQuotaUI();
+    } catch (err) {
+      console.error("DeepSeek API error:", err);
+      hideLoader();
+      // 本地兜底
+      toast("AI 服务暂不可用，使用本地推荐", "info");
+      const results = generateResultsLocal();
+      state.lastResults = results;
+      state.lastFeedback = {};
+      state.lastResultContext = {
+        recipientId,
+        recipientName,
+        occasion: formSnapshot.occasion,
+        budget: formSnapshot.budget,
+        formSnapshot,
+      };
+      renderResult();
+      openResult();
+      updateQuotaUI();
+    }
+  }
+
+  /* ============================================================
+     结果页渲染
+     ============================================================ */
+  function renderResult() {
+    const screen = $(`.screen[data-screen="result"]`);
+    const savedScroll = screen ? screen.scrollTop : 0;
+    const results = state.lastResults || [];
+    const avg = results.length ? Math.round(results.reduce((s, r) => s + (r.matchScore || 0), 0) / results.length) : 0;
+    const f = state.form;
+
+    const cards = results.map((g, i) => {
+      const fb = state.lastFeedback[i];
+      const status = fb === "accepted" ? "accepted" : fb === "rejected" ? "rejected" : "";
+      return `
+      <div class="gift-card" data-status="${status}" style="animation-delay:${i * 0.08}s">
+        <div class="gift-card__top">
+          <div class="seal ${i === 0 ? "seal--rose" : ""}">
+            <span class="seal__num">${g.matchScore}<small></small></span>
+          </div>
+          <div class="gift-card__main">
+            <div class="gift-card__name">${escape(g.name)}</div>
+            <div class="gift-card__price">${ICO.coin}${escape(g.priceRange)}</div>
+            <div class="gift-card__tags">${(g.tags || []).map(t => `<span class="tag ${tagClass(t)}">${escape(t)}</span>`).join("")}</div>
+          </div>
+        </div>
+        <div class="note">
+          <div class="note__label">— AI 的推荐理由 —</div>
+          <div class="note__txt">${escape(g.reason)}</div>
+          <div class="note__hint">${ICO.bag}建议购买：${escape(g.purchaseHint)}</div>
+        </div>
+        <div class="gift-card__actions">
+          <button class="gact" data-action="feedback" data-idx="${i}" data-kind="accepted" data-on="${fb === "accepted"}">
+            ${ICO.check}采纳
+          </button>
+          <button class="gact gact--reject" data-action="feedback" data-idx="${i}" data-kind="rejected" data-on="${fb === "rejected"}">
+            ${ICO.close}不采纳
+          </button>
+          <button class="gact gact--save" data-action="feedback" data-idx="${i}" data-kind="saved" data-on="${fb === "saved"}" title="收藏">
+            ${ICO.heart}
+          </button>
+        </div>
+      </div>`;
+    }).join("");
+
+    screen.innerHTML = `
+      <div class="result-head">
+        <div class="seal seal--lg"><span class="seal__num">${avg}</span></div>
+        <div class="result-head__title">为「${escape(f.name || "TA")}」精选 ${results.length} 份礼物</div>
+        <div class="result-head__sub">${escape(f.occasion || "送礼")} · ${budgetText(f.budget)} · 综合匹配度 ${avg}</div>
+      </div>
+      ${cards}
+      <div class="adslot adslot--banner">${ICO.bag}Banner 广告位</div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn btn--ghost btn--sm" data-action="regenerate" style="flex:1">${ICO.refresh}换一批</button>
+        <button class="btn btn--gold btn--sm" data-action="open-share" style="flex:1">${ICO.share}分享 +2</button>
+      </div>
+      <button class="btn btn--ghost btn--block" style="margin-top:10px" data-action="close-result">${ICO.msg}返回继续编辑</button>
+    `;
+    if (screen) screen.scrollTop = savedScroll;
+  }
+
+  function handleFeedback(idx, kind) {
+    const cur = state.lastFeedback[idx];
+    state.lastFeedback[idx] = cur === kind ? "" : kind;
+    if (kind === "accepted" && cur !== "accepted") {
+      state.acceptedTotal += 1;
+      toast("已记录采纳，将优化后续推荐", "ok");
+    }
+    persistStats();
+    renderResult();
+    const screen = $(`.screen[data-screen="result"]`);
+    screen.scrollTop = screen.scrollTop;
+  }
+
+  /* ============================================================
+     结果页关闭时：将推荐结果写入历史
+     ============================================================ */
+  function saveResultsToHistory() {
+    if (!state.lastResults || state.lastResults.length === 0) return;
+    if (!state.lastResultContext) return;
+
+    const ctx = state.lastResultContext;
+    const now = new Date();
+    const dateStr = String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+
+    const items = state.lastResults.map((g, i) => {
+      const fb = state.lastFeedback[i];
+      return {
+        name: g.name,
+        status: fb === "accepted" ? "accepted" : fb === "rejected" ? "rejected" : "pending",
+      };
+    });
+
+    const historyEntry = {
+      recipientId: ctx.recipientId,
+      recipientName: ctx.recipientName,
+      date: dateStr,
+      occasion: ctx.occasion || "送礼",
+      budget: ctx.budget || 300,
+      items,
+    };
+
+    state.history = [historyEntry, ...state.history];
+    persistHistory();
+    state.lastResults = null;
+    state.lastResultContext = null;
+    state.lastFeedback = {};
+  }
+
+  /* ============================================================
+     对象页
+     ============================================================ */
+  function renderRecipients() {
+    const screen = $(`.screen[data-screen="recipients"]`);
+    const list = state.recipients.map(r => {
+      const completeness = recipientCompleteness(r);
+      return `
+      <div class="list-item" data-action="select-recipient-from-list" data-id="${r.id}">
+        <div class="avatar" style="background:${avatarGrad(r.colorIdx)}">${escape(r.initial)}</div>
+        <div class="list-item__main">
+          <div class="list-item__name">${escape(r.name)} <span style="font-size:11px;color:var(--ink-3);font-weight:400">· ${escape(r.relationship)}</span></div>
+          <div class="list-item__meta">${escape(r.gender)} · ${escape(r.ageRange)} · ${(r.hobbies || []).slice(0, 2).join("、") || "暂无标签"}</div>
+        </div>
+        <div class="list-item__end">
+          <div class="num">${completeness}%</div>
+          <div style="font-size:10px;color:var(--ink-3)">完整度</div>
+        </div>
+      </div>`;
+    }).join("");
+
+    screen.innerHTML = `
+      <div class="h-eyebrow">Recipient Library</div>
+      <div class="section__head" style="margin-top:4px"><div class="h-title">送礼对象 (${state.recipients.length})</div></div>
+      ${list}
+      <button class="btn btn--primary btn--block" data-action="new-recipient" style="margin-top:14px">${ICO.plus}新建送礼对象</button>
+      <div class="adslot adslot--banner" style="margin-top:18px">${ICO.bag}Banner 广告位</div>
+    `;
+  }
+
+  function recipientCompleteness(r) {
+    let filled = 0, total = 0;
+    ["name", "gender", "ageRange", "relationship", "closeness", "occupation", "lifeStage", "diet", "living", "taboos"].forEach(k => {
+      total++; if (r[k]) filled++;
+    });
+    ["personality", "hobbies", "materialPrefs"].forEach(k => { total++; if (r[k] && r[k].length) filled++; });
+    return Math.round((filled / total) * 100);
+  }
+
+  function selectRecipientFromList(id) {
+    go("recommend");
+    setTimeout(() => selectRecipient(id), 50);
+  }
+
+  /* ============================================================
+     历史页
+     ============================================================ */
+  function renderHistory() {
+    const screen = $(`.screen[data-screen="history"]`);
+    const groups = {};
+    state.history.forEach(h => {
+      const key = h.recipientName || "未知对象";
+      (groups[key] = groups[key] || []).push(h);
+    });
+    const html = Object.entries(groups).map(([name, items]) => {
+      const cards = items.map((h, idx) => {
+        const realIdx = state.history.indexOf(h);
+        return `
+        <div class="hist-card" data-action="reuse-history" data-id="${h.recipientId || ""}">
+          <div class="hist-card__top">
+            <div class="hist-card__who">${escape(h.occasion)} · ${budgetText(h.budget)}</div>
+            <div class="hist-card__date">${escape(h.date)}</div>
+          </div>
+          <div class="hist-card__items">
+            ${h.items.map(it => `<div class="hist-item"><span class="hist-item__dot" data-s="${it.status}"></span>${escape(it.name)}${it.status === "accepted" ? ' <span style="color:var(--sage);font-size:11px">已采纳</span>' : it.status === "rejected" ? ' <span style="color:var(--terra);font-size:11px">未采纳</span>' : ""}</div>`).join("")}
+          </div>
+        </div>`;
+      }).join("");
+      return `<div class="hist-group"><div class="hist-group__label">${escape(name)}</div>${cards}</div>`;
+    }).join("");
+
+    screen.innerHTML = `
+      <div class="h-eyebrow">Recommendation History</div>
+      <div class="section__head" style="margin-top:4px"><div class="h-title">推荐历史 (${state.history.length})</div></div>
+      ${html || '<div class="h-sub">暂无历史记录</div>'}
+    `;
+  }
+
+  /* ============================================================
+     我的页
+     ============================================================ */
+  function renderProfile() {
+    const screen = $(`.screen[data-screen="profile"]`);
+    const acceptRate = state.totalGenerated ? Math.round((state.acceptedTotal / (state.totalGenerated * 4)) * 100) : 0;
+    const flowHtml = state.flow.map(f => `
+      <div class="flow-item">
+        <div class="flow-item__ico" data-t="${f.type}">${f.type === "add" ? ICO.coin : ICO.gift}</div>
+        <div class="flow-item__main">
+          <div class="flow-item__title">${escape(f.title)}</div>
+          <div class="flow-item__time">${escape(f.time)}</div>
+        </div>
+        <div class="flow-item__amt ${f.amt > 0 ? "up" : "down"}">${f.amt > 0 ? "+" : ""}${f.amt}</div>
+      </div>`).join("");
+
+    const reminders = state.recipients
+      .flatMap(r => (r.importantDates || []).map(d => ({ ...d, name: r.name })))
+      .slice(0, 4);
+    const reminderHtml = reminders.length ? reminders.map(d => `
+      <div class="flow-item">
+        <div class="flow-item__ico" data-t="add">${ICO.bell}</div>
+        <div class="flow-item__main">
+          <div class="flow-item__title">${escape(d.name)} · ${escape(d.occasion)}</div>
+          <div class="flow-item__time">${escape(d.date)}${d.recurring ? " · 每年" : ""}</div>
+        </div>
+      </div>`).join("") : `<div class="h-sub">暂无提醒</div>`;
+
+    screen.innerHTML = `
+      <div class="profile-head">
+        <div class="avatar avatar--lg" style="background:${avatarGrad(0)}">会</div>
+        <div class="profile-head__name">微信用户</div>
+        <div class="profile-head__id">AIGift · openid ·•••8723</div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="stat__num rose">${state.quota}</div><div class="stat__label">剩余额度</div></div>
+        <div class="stat"><div class="stat__num">${state.totalGenerated}</div><div class="stat__label">累计推荐</div></div>
+        <div class="stat"><div class="stat__num gold">${Math.min(99, acceptRate)}%</div><div class="stat__label">采纳率</div></div>
+      </div>
+
+      <div class="card card--pad" style="margin-bottom:18px">
+        <div class="section__head" style="margin:0 0 6px"><div class="h-title" style="font-size:15px">额度流水</div></div>
+        ${flowHtml}
+      </div>
+
+      <div class="card card--pad" style="margin-bottom:18px">
+        <div class="section__head" style="margin:0 0 6px"><div class="h-title" style="font-size:15px">节日 / 纪念日提醒</div></div>
+        ${reminderHtml}
+      </div>
+
+      <div class="menu-row" data-action="toast-nav">
+        <div class="menu-row__ico" style="background:var(--rose)">${ICO.shield}</div>
+        <div class="menu-row__title">隐私与数据</div>
+        <div class="menu-row__arrow">${ICO.chev}</div>
+      </div>
+      <div class="menu-row" data-action="toast-nav">
+        <div class="menu-row__ico" style="background:var(--gold)">${ICO.info}</div>
+        <div class="menu-row__title">关于 AIGift</div>
+        <div class="menu-row__arrow">${ICO.chev}</div>
+      </div>
+      <div class="menu-row" data-action="toast-nav">
+        <div class="menu-row__ico" style="background:var(--sage)">${ICO.msg}</div>
+        <div class="menu-row__title">意见反馈</div>
+        <div class="menu-row__arrow">${ICO.chev}</div>
+      </div>
+      <div class="adslot adslot--banner" style="margin-top:18px">${ICO.bag}Banner 广告位</div>
+    `;
+  }
+
+  /* ============================================================
+     模态：激励视频 / 分享 / 新建对象 / 插屏
+     ============================================================ */
+  function openReward(force) {
+    openModal(`
+      <div class="reward">
+        <div class="sheet__handle"></div>
+        <div class="seal seal--lg seal--rose reward__seal"><span class="seal__num">${ICO.play}</span></div>
+        <div class="sheet__title">${force ? "额度不足，看视频继续" : "观看激励视频"}</div>
+        <div class="sheet__sub">完整观看即可获得 <b style="color:var(--rose-d)">+3 次</b> 推荐额度</div>
+        <div class="reward__countdown" id="rewardCd">${ICO.timer}准备播放…</div>
+        <button class="btn btn--primary btn--block" data-action="watch-video">${ICO.play}立即观看</button>
+        <button class="btn btn--ghost btn--block" style="margin-top:10px" data-action="close-modal">稍后再说</button>
+      </div>
+    `);
+  }
+
+  function watchVideo() {
+    const cd = $("#rewardCd");
+    if (!cd) return;
+    let n = 5;
+    cd.innerHTML = `${ICO.timer}观看中 · 剩余 <span class="num">${n}</span>s`;
+    const t = setInterval(() => {
+      n -= 1;
+      if (n <= 0) {
+        clearInterval(t);
+        state.quota += 3;
+        addFlow("add", "观看激励视频", 3);
+        persistQuota();
+        persistFlow();
+        updateQuotaUI();
+        closeModal();
+        toast("已到账 +3 次额度", "ok");
+      } else {
+        cd.innerHTML = `${ICO.timer}观看中 · 剩余 <span class="num">${n}</span>s`;
+      }
+    }, 800);
+  }
+
+  function openShare() {
+    openModal(`
+      <div class="sheet__handle"></div>
+      <div class="sheet__title">分享给好友</div>
+      <div class="sheet__sub">TA 首次进入小程序，你即可获得 <b style="color:var(--rose-d)">+2 次</b> 额度</div>
+      <div style="display:flex;gap:10px;margin:18px 0">
+        <button class="btn btn--ghost btn--block btn--sm" data-action="close-modal">${ICO.msg}微信好友</button>
+        <button class="btn btn--ghost btn--block btn--sm" data-action="close-modal">生成卡片</button>
+      </div>
+      <button class="btn btn--primary btn--block" data-action="share-done">${ICO.share}模拟分享成功 +2</button>
+    `);
+  }
+
+  function shareDone() {
+    state.quota += 2;
+    addFlow("add", "分享好友奖励", 2);
+    persistQuota();
+    persistFlow();
+    updateQuotaUI();
+    closeModal();
+    toast("已到账 +2 次额度", "ok");
+  }
+
+  function openInterstitial() {
+    openModal(`
+      <div class="interstitial">
+        <div class="interstitial__visual">
+          <span>专属好物 · 限时优惠</span>
+          <span class="interstitial__skip">跳过 3</span>
+        </div>
+        <div class="interstitial__cta">— 插屏广告位（频控：首次推荐不插）—</div>
+        <button class="btn btn--ghost btn--block btn--sm" data-action="close-modal">关闭广告</button>
+      </div>
+    `);
+    let n = 3;
+    const skip = $(".interstitial__skip");
+    const t = setInterval(() => {
+      n -= 1;
+      if (n <= 0) { clearInterval(t); }
+      else if (skip) skip.textContent = `跳过 ${n}`;
+    }, 1000);
+  }
+
+  /* ---------- 新建对象（完整字段） ---------- */
+  function openNewRecipient() {
+    const seg = (field, options, multi = false) => options.map(o =>
+      `<button class="seg__btn" data-nr-seg="${field}" data-val="${o}" data-multi="${multi}">${multi ? '<span class="check">' + ICO.check + '</span>' : ''}${o}</button>`).join("");
+
+    openModal(`
+      <div class="sheet__handle"></div>
+      <div class="sheet__title">新建送礼对象</div>
+      <div class="sheet__sub">填写越多，未来推荐越准</div>
+
+      <div class="field" style="margin-top:14px">
+        <div class="field__label"><span class="req">*</span>昵称</div>
+        <input class="input" id="nr_name" placeholder="如：老张、妹妹" />
+      </div>
+      <div class="field"><div class="field__label"><span class="req">*</span>关系</div><div class="seg">${seg("nr_relationship", DICT.relationship)}</div></div>
+      <div class="field"><div class="field__label"><span class="req">*</span>性别</div><div class="seg">${seg("nr_gender", DICT.gender)}</div></div>
+      <div class="field"><div class="field__label"><span class="req">*</span>年龄段</div><div class="seg">${seg("nr_ageRange", DICT.ageRange)}</div></div>
+      <div class="field"><div class="field__label">亲密程度</div><div class="seg">${seg("nr_closeness", DICT.closeness)}</div></div>
+      <div class="field"><div class="field__label">职业 / 身份</div><input class="input" id="nr_occupation" placeholder="如：产品经理、学生" /></div>
+      <div class="field"><div class="field__label">人生阶段</div><div class="seg">${seg("nr_lifeStage", DICT.lifeStage)}</div></div>
+      <div class="field"><div class="field__label">性格标签（可多选）</div><div class="seg seg--multi">${seg("nr_personality", DICT.personality, true)}</div></div>
+      <div class="field"><div class="field__label">兴趣爱好（可多选）</div><div class="seg seg--multi">${seg("nr_hobbies", DICT.hobbies, true)}</div></div>
+      <div class="field"><div class="field__label">物质偏好（可多选）</div><div class="seg seg--multi">${seg("nr_materialPrefs", DICT.materialPrefs, true)}</div></div>
+      <div class="field"><div class="field__label">饮食禁忌</div><div class="seg">${seg("nr_diet", DICT.diet)}</div></div>
+      <div class="field"><div class="field__label">居住情况</div><div class="seg">${seg("nr_living", DICT.living)}</div></div>
+      <div class="field"><div class="field__label">⚠️ 禁忌 / 雷区</div><textarea class="textarea" id="nr_taboos" placeholder="颜色 / 数字 / 寓意 / 品类"></textarea></div>
+
+      <button class="btn btn--primary btn--block" data-action="save-recipient">${ICO.check}保存对象</button>
+    `);
+
+    state.nrDraft = {
+      nr_name: "", nr_relationship: "", nr_gender: "", nr_ageRange: "",
+      nr_closeness: "", nr_occupation: "", nr_lifeStage: "",
+      nr_personality: [], nr_hobbies: [], nr_materialPrefs: [],
+      nr_diet: "", nr_living: "", nr_taboos: "",
+    };
+  }
+
+  function saveRecipient() {
+    const d = state.nrDraft;
+    if (!d.nr_name || !d.nr_relationship || !d.nr_gender || !d.nr_ageRange) {
+      toast("请完成必填项");
+      return;
+    }
+    const id = "r_" + Date.now().toString(36);
+    const initial = d.nr_name.slice(0, 1);
+    state.recipients = [{
+      id,
+      name: d.nr_name,
+      initial,
+      gender: d.nr_gender,
+      ageRange: d.nr_ageRange,
+      relationship: d.nr_relationship,
+      closeness: d.nr_closeness || "",
+      occupation: d.nr_occupation || "",
+      lifeStage: d.nr_lifeStage || "",
+      personality: d.nr_personality || [],
+      hobbies: d.nr_hobbies || [],
+      materialPrefs: d.nr_materialPrefs || [],
+      diet: d.nr_diet || "",
+      living: d.nr_living || "",
+      taboos: d.nr_taboos || "",
+      importantDates: [],
+      colorIdx: state.recipients.length,
+    }, ...state.recipients];
+    persistRecipients();
+    closeModal();
+    toast("对象已创建", "ok");
+    if (state.route === "recipients") renderRecipients();
+    else { go("recommend"); setTimeout(() => selectRecipient(id), 60); }
+  }
+
+  /* ---------- 额度 / 流水 ---------- */
+  function addFlow(type, title, amt) {
+    state.flow = [{ type, title, time: "刚刚", amt }, ...state.flow].slice(0, 12);
+  }
+  function updateQuotaUI() {
+    const n = $("#quotaNum");
+    if (n) n.textContent = state.quota;
+    refreshCompleteness();
+  }
+
+  /* ============================================================
+     事件分发
+     ============================================================ */
+  const app = $("#app");
+
+  // 点击委托
+  app.addEventListener("click", e => {
+    const tab = e.target.closest(".tab");
+    if (tab) { go(tab.dataset.tab); return; }
+
+    const actEl = e.target.closest("[data-action]");
+    if (!actEl) return;
+    const a = actEl.dataset.action;
+
+    switch (a) {
+      case "go-recipients": go("recipients"); break;
+      case "open-reward": openReward(false); break;
+      case "watch-video": watchVideo(); break;
+      case "open-share": openShare(); break;
+      case "share-done": shareDone(); break;
+      case "select-recipient": selectRecipient(actEl.dataset.id); break;
+      case "select-recipient-from-list": selectRecipientFromList(actEl.dataset.id); break;
+      case "new-recipient": openNewRecipient(); break;
+      case "apply-template": applyTemplate(actEl.dataset.key); break;
+      case "generate": handleGenerate(); break;
+      case "feedback": handleFeedback(+actEl.dataset.idx, actEl.dataset.kind); break;
+      case "regenerate":
+        // 先保存上一批结果到历史
+        saveResultsToHistory();
+        handleGenerate();
+        break;
+      case "close-result":
+        saveResultsToHistory();
+        closeResult();
+        break;
+      case "close-modal": closeModal(); break;
+      case "reuse-history": {
+        const id = actEl.dataset.id;
+        go("recommend");
+        if (id) setTimeout(() => selectRecipient(id), 60);
+        toast("已载入对象画像，可重新生成推荐", "ok");
+        break;
+      }
+      case "save-recipient": saveRecipient(); break;
+      case "save-apikey": saveApiKey(); break;
+      case "toast-nav": toast("原型演示：此入口已规划"); break;
+    }
+  });
+
+  // 文本/范围输入
+  app.addEventListener("input", e => {
+    const el = e.target;
+    if (el.dataset.field) {
+      const val = el.type === "range" ? +el.value : el.value;
+      state.form[el.dataset.field] = val;
+      if (el.dataset.field === "budget") {
+        $("#budgetVal").textContent = budgetText(val);
+        el.style.setProperty("--p", ((val / 1000) * 100) + "%");
+      }
+      refreshCompleteness();
+    }
+    // 新建对象模态中的输入
+    if (el.id === "nrName" || (el.id && el.id.startsWith("nr_"))) {
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+        state.nrDraft[el.id] = el.value;
+      }
+    }
+  });
+
+  // 段选择 / 多选
+  app.addEventListener("click", e => {
+    const segEl = e.target.closest("[data-seg]");
+    if (segEl) {
+      const field = segEl.dataset.seg;
+      const val = segEl.dataset.val;
+      const multi = segEl.dataset.multi === "true";
+      if (field === "count") state.form.count = +val;
+      else if (multi) {
+        const arr = state.form[field] || [];
+        const i = arr.indexOf(val);
+        if (i >= 0) arr.splice(i, 1); else arr.push(val);
+        state.form[field] = arr;
+      } else {
+        state.form[field] = state.form[field] === val ? "" : val;
+      }
+      renderRecommend();
+      return;
+    }
+    // 新建对象模态内段选择
+    const nrSeg = e.target.closest("[data-nr-seg]");
+    if (nrSeg) {
+      const field = nrSeg.dataset.nrSeg; // e.g. "nr_relationship"
+      const val = nrSeg.dataset.val;
+      const multi = nrSeg.dataset.multi === "true";
+      if (multi) {
+        const arr = state.nrDraft[field] || [];
+        const i = arr.indexOf(val);
+        if (i >= 0) arr.splice(i, 1); else arr.push(val);
+        state.nrDraft[field] = arr;
+      } else {
+        state.nrDraft[field] = state.nrDraft[field] === val ? "" : val;
+      }
+      $$(`[data-nr-seg="${field}"]`).forEach(b => {
+        const on = multi ? (state.nrDraft[field] || []).includes(b.dataset.val) : state.nrDraft[field] === b.dataset.val;
+        b.setAttribute("data-active", on);
+        if (multi) {
+          if (on) {
+            b.style.background = "var(--rose-bg)";
+            b.style.color = "var(--rose-d)";
+            b.style.borderColor = "var(--rose-l)";
+          } else {
+            b.style.background = "";
+            b.style.color = "";
+            b.style.borderColor = "";
+          }
+        }
+      });
+    }
+  });
+
+  /* ---------- 初始化 ---------- */
+  function renderGenerateDock() {
+    let dock = $("#genDock");
+    if (!dock) {
+      dock = document.createElement("div");
+      dock.id = "genDock";
+      dock.className = "generate-dock";
+      dock.innerHTML = `<button class="btn btn--primary btn--block" id="genBtn" data-action="generate">${ICO.sparkle}生成 AI 推荐</button>`;
+      $("#app").appendChild(dock);
+    }
+  }
+
+  function init() {
+    // 状态栏时间
+    $("#statusTime").textContent = (() => {
+      const d = new Date();
+      return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0");
+    })();
+
+    renderRecommend();
+    renderGenerateDock();
+    go("recommend");
+
+    // 每日登录奖励（模拟）
+    setTimeout(() => {
+      if (!state.dailyClaimed) {
+        state.dailyClaimed = true;
+        state.quota += 1;
+        addFlow("add", "每日登录奖励", 1);
+        persistQuota();
+        persistFlow();
+        persistDailyClaimed();
+        updateQuotaUI();
+        toast("每日登录 +1 次额度", "ok");
+      }
+    }, 1400);
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+
+</script>
+</body>
+</html>

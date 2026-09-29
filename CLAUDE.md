@@ -18,11 +18,15 @@ prototype/                                      # 高保真原型的【模块化
   index.html  css/styles.css  js/data.js  js/app.js
 aigift-prototype.html                           # 同一原型的单文件自包含快照（Open Design 产物）
 aigift-prototype.html.artifact.json             # 上述快照的产物元数据
+aigift-standalone.html                          # 单文件验证版（DeepSeek + localStorage），由 build_single.py 生成
+build_single.py                                 # 打包脚本：python3 build_single.py 从 prototype/ 重新生成 aigift-standalone.html
 .obsidian/                                      # 目录是一个 Obsidian vault（用户用 Obsidian 编文档，勿改）
 .od-skills/                                     # Open Design 平台用的 skill（web-prototype / agent-browser），非本项目代码
 ```
 
-编辑原型逻辑时改 `prototype/`（模块化源码）。根目录的 `aigift-prototype.html` 是把 HTML/CSS/JS 内联打包后的自包含快照，二者会随编辑而漂移；若需同步，须明确询问用户以哪个为准。
+编辑原型逻辑时改 `prototype/`（模块化源码）。根目录的 `aigift-prototype.html` 是把 HTML/CSS/JS 内联打包后的自包含快照，二者会随编辑而漂移；若需同步，须明确询问用户以哪个为准。`aigift-standalone.html` 由 `build_single.py` 从 `prototype/` 生成——**改完 `prototype/` 后运行 `python3 build_single.py` 重新打包**。
+
+**安全约定**：仓库版本不内嵌 DeepSeek API Key（GitHub Push Protection 拦截含密钥的提交）。`app.js` 中 `DEEPSEEK_API_KEY` 留空，运行时首次生成会弹出输入框，Key 存本机 localStorage（`aigift_api_key`）。验证时可本地粘贴硬编码，切勿提交回仓库。
 
 ## 原型架构（`prototype/`）
 
