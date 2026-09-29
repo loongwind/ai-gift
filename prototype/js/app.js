@@ -24,7 +24,8 @@
   const DEEPSEEK_MODEL = "deepseek-chat";
 
   function getApiKey() {
-    return (DEEPSEEK_API_KEY || lsGet(STORAGE_KEYS.apiKey, "") || "").trim();
+    // 优先级：仓库硬编码 > 本机 localStorage > 本次会话内存（存储被禁时的降级）
+    return (DEEPSEEK_API_KEY || state.sessionApiKey || lsGet(STORAGE_KEYS.apiKey, "") || "").trim();
   }
 
   /* ============================================================
@@ -54,8 +55,12 @@
   function lsSet(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (e) {
+      // 存储被禁/配额满（Safari 隐私模式、file:// 限制等）不能静默：
+      // 静默会让保存流程「看起来成功」，调用方据此走错分支
       console.warn("lsSet error:", key, e);
+      return false;
     }
   }
 
@@ -202,7 +207,11 @@
     toastTimer = setTimeout(() => toastEl.classList.remove("is-show"), 1900);
   }
 
+  let modalClearTimer = null;
   function openModal(html) {
+    // 关闭-重开竞态防护：取消上一次 closeModal 挂起的清空定时器，
+    // 否则 300ms 后新模态内容被清空，留下开着但为空的遮罩层盖住整页
+    if (modalClearTimer) { clearTimeout(modalClearTimer); modalClearTimer = null; }
     modalLayer.innerHTML = `<div class="sheet">${html}</div>`;
     modalLayer.classList.add("is-open");
     modalLayer.setAttribute("aria-hidden", "false");
@@ -210,7 +219,7 @@
   function closeModal() {
     modalLayer.classList.remove("is-open");
     modalLayer.setAttribute("aria-hidden", "true");
-    setTimeout(() => (modalLayer.innerHTML = ""), 300);
+    modalClearTimer = setTimeout(() => { modalLayer.innerHTML = ""; modalClearTimer = null; }, 300);
   }
 
   /* ============================================================
@@ -347,29 +356,42 @@
     return null;
   }
 
+  const DEEPSEEK_TIMEOUT_MS = 60000;  // 超时后落本地兜底，避免 loader 永远盖住页面
+
   async function callDeepSeek(formData, feedbackSummary) {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("未配置 DeepSeek API Key");
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(formData, feedbackSummary);
 
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 2000,
-        temperature: 0.8,
-      }),
-    });
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), DEEPSEEK_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          model: DEEPSEEK_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 2000,
+          temperature: 0.8,
+        }),
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") throw new Error("AI 请求超时，请检查网络后重试");
+      throw err;
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
@@ -411,7 +433,17 @@
       toast("请输入有效的 API Key（以 sk- 开头）");
       return;
     }
-    lsSet(STORAGE_KEYS.apiKey, val);
+    // 存储失败（隐私模式/浏览器限制）时保留模态与已输入内容，让用户可改走其他路径
+    if (!lsSet(STORAGE_KEYS.apiKey, val)) {
+      // Key 只保存在内存中，本次会话仍可直接使用
+      state.sessionApiKey = val;
+      toast("本机存储不可用，Key 仅本次会话有效", "info");
+      const cb = state._apiKeyCallback;
+      state._apiKeyCallback = null;
+      closeModal();
+      if (cb) cb();
+      return;
+    }
     const cb = state._apiKeyCallback;
     state._apiKeyCallback = null;
     closeModal();
