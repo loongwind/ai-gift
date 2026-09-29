@@ -1,5 +1,7 @@
 /* ============================================================
    AIGift 原型 · 应用逻辑（状态 / 路由 / 渲染 / 交互）
+   - AI 推荐调用 DeepSeek API
+   - localStorage 数据持久化
    ============================================================ */
 (function () {
   "use strict";
@@ -9,6 +11,117 @@
     SCENARIO_TEMPLATES, SEED_RECIPIENTS, GIFT_POOL,
     SEED_HISTORY, SEED_FLOW, tagClass, budgetText,
   } = window.AIGIFT_DATA;
+
+  /* ============================================================
+     DeepSeek API 配置
+     —— 安全约定：仓库版本不内嵌 API Key（GitHub Push Protection 会拦截含密钥的提交）。
+     DEEPSEEK_API_KEY 留空时，首次生成推荐会弹出输入框，Key 保存在
+     localStorage（aigift_api_key），仅存于本机浏览器、不上传。
+     验证阶段如需硬编码可自行在下方粘贴，切勿提交回仓库。
+     ============================================================ */
+  const DEEPSEEK_API_KEY = "";
+  const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+  const DEEPSEEK_MODEL = "deepseek-chat";
+
+  function getApiKey() {
+    return (DEEPSEEK_API_KEY || lsGet(STORAGE_KEYS.apiKey, "") || "").trim();
+  }
+
+  /* ============================================================
+     localStorage 持久化层
+     ============================================================ */
+  const STORAGE_KEYS = {
+    recipients: "aigift_recipients",
+    history: "aigift_history",
+    quota: "aigift_quota",
+    flow: "aigift_flow",
+    stats: "aigift_stats",
+    dailyClaimed: "aigift_daily_claimed",
+    dailyClaimedDate: "aigift_daily_claimed_date",
+    apiKey: "aigift_api_key",
+  };
+
+  function lsGet(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.warn("lsGet error:", key, e);
+      return fallback;
+    }
+  }
+
+  function lsSet(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn("lsSet error:", key, e);
+    }
+  }
+
+  function persistRecipients() {
+    lsSet(STORAGE_KEYS.recipients, state.recipients);
+  }
+  function persistHistory() {
+    lsSet(STORAGE_KEYS.history, state.history);
+  }
+  function persistQuota() {
+    lsSet(STORAGE_KEYS.quota, state.quota);
+  }
+  function persistFlow() {
+    lsSet(STORAGE_KEYS.flow, state.flow);
+  }
+  function persistStats() {
+    lsSet(STORAGE_KEYS.stats, {
+      totalGenerated: state.totalGenerated,
+      acceptedTotal: state.acceptedTotal,
+    });
+  }
+  function persistDailyClaimed() {
+    lsSet(STORAGE_KEYS.dailyClaimed, state.dailyClaimed);
+    lsSet(STORAGE_KEYS.dailyClaimedDate, new Date().toDateString());
+  }
+
+  function todayDailyAlreadyClaimed() {
+    const claimed = lsGet(STORAGE_KEYS.dailyClaimed, false);
+    const claimedDate = lsGet(STORAGE_KEYS.dailyClaimedDate, "");
+    return claimed && claimedDate === new Date().toDateString();
+  }
+
+  /* ============================================================
+     从 localStorage 载入或使用种子数据初始化
+     ============================================================ */
+  function loadRecipients() {
+    const stored = lsGet(STORAGE_KEYS.recipients, null);
+    if (stored && Array.isArray(stored) && stored.length > 0) return stored;
+    return SEED_RECIPIENTS.map(r => ({
+      ...r,
+      personality: [...r.personality],
+      hobbies: [...r.hobbies],
+      materialPrefs: [...r.materialPrefs],
+      importantDates: [...(r.importantDates || [])],
+    }));
+  }
+
+  function loadHistory() {
+    const stored = lsGet(STORAGE_KEYS.history, null);
+    if (stored && Array.isArray(stored)) return stored;
+    return SEED_HISTORY.map(h => ({ ...h, items: [...h.items] }));
+  }
+
+  function loadQuota() {
+    return lsGet(STORAGE_KEYS.quota, 5);
+  }
+
+  function loadFlow() {
+    const stored = lsGet(STORAGE_KEYS.flow, null);
+    if (stored && Array.isArray(stored)) return stored;
+    return SEED_FLOW.map(f => ({ ...f }));
+  }
+
+  function loadStats() {
+    return lsGet(STORAGE_KEYS.stats, { totalGenerated: 8, acceptedTotal: 11 });
+  }
 
   /* ---------- 状态 ---------- */
   const DEFAULT_FORM = {
@@ -23,19 +136,20 @@
 
   const state = {
     route: "recommend",
-    quota: 5,
-    totalGenerated: 8,
-    acceptedTotal: 11,
-    recipients: SEED_RECIPIENTS.map(r => ({ ...r, personality:[...r.personality], hobbies:[...r.hobbies], materialPrefs:[...r.materialPrefs], importantDates:[...(r.importantDates||[])] })),
+    quota: loadQuota(),
+    totalGenerated: loadStats().totalGenerated,
+    acceptedTotal: loadStats().acceptedTotal,
+    recipients: loadRecipients(),
     currentRecipientId: null,
     scenario: null,
     form: { ...DEFAULT_FORM },
     lastResults: null,
     lastFeedback: {},
-    history: SEED_HISTORY.map(h => ({ ...h, items:[...h.items] })),
-    flow: SEED_FLOW.map(f => ({ ...f })),
+    lastResultContext: null,
+    history: loadHistory(),
+    flow: loadFlow(),
     interstitialCount: 0,
-    dailyClaimed: false,
+    dailyClaimed: todayDailyAlreadyClaimed(),
   };
 
   /* ---------- DOM ---------- */
@@ -68,6 +182,7 @@
     chev: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     pin: '<svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5c0 3 2 4 2 6h6c0-2 2-3 2-6a5 5 0 00-5-5zm-1 16h2v4h-2v-4z" fill="currentColor"/></svg>',
     timer: '<svg viewBox="0 0 24 24"><path d="M12 2l1 2h3v2h-1.1A7 7 0 1112 21a7 7 0 01-6-4h2.2A5 5 0 0012 19a5 5 0 100-10 5 5 0 00-4.6 3H10v2H4v-6h2v2.5A7 7 0 0111 5.1V4h-1V2h2z" fill="currentColor"/></svg>',
+    edit: '<svg viewBox="0 0 24 24"><path d="M14.06 4.94l5 5L8 21H3v-5L14.06 4.94m0-2L1 16v7h7L23 8l-8.94-5.06z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   };
 
   /* ---------- 工具 ---------- */
@@ -95,6 +210,236 @@
     modalLayer.classList.remove("is-open");
     modalLayer.setAttribute("aria-hidden", "true");
     setTimeout(() => (modalLayer.innerHTML = ""), 300);
+  }
+
+  /* ============================================================
+     DeepSeek API 调用
+     ============================================================ */
+  function buildSystemPrompt() {
+    return `你是一位资深礼物顾问，拥有丰富的送礼经验和心理学知识。你擅长根据收礼人的画像特征、送礼场景和预算，推荐最合适、最有心意的礼物。
+
+你的推荐应该：
+1. 紧密匹配收礼人的性格、爱好和偏好
+2. 考虑送礼场合的合适性
+3. 在用户预算范围内
+4. 规避用户提到的禁忌/雷区
+5. 提供独特且有创意的建议，而非千篇一律的常见礼品
+
+请以 JSON 格式返回推荐结果，格式如下：
+{
+  "results": [
+    {
+      "name": "礼物名称",
+      "reason": "推荐理由（100-150字，结合收礼人画像详细说明）",
+      "priceRange": "¥100-200",
+      "purchaseHint": "购买渠道建议",
+      "tags": ["标签1", "标签2", "标签3"],
+      "matchScore": 88
+    }
+  ]
+}
+
+要求：
+- 每条推荐理由需具体、个性化，结合收礼人的特征来阐述
+- matchScore 为 60-98 的整数，越高越匹配
+- tags 包含 2-4 个关键词标签
+- priceRange 必须在用户预算范围内
+- 严格遵守用户提到的禁忌`;
+  }
+
+  function buildUserPrompt(formData, feedbackSummary) {
+    const parts = [];
+    parts.push("## 收礼人画像");
+    if (formData.name) parts.push(`- 昵称：${formData.name}`);
+    if (formData.gender) parts.push(`- 性别：${formData.gender}`);
+    if (formData.ageRange) parts.push(`- 年龄段：${formData.ageRange}`);
+    if (formData.relationship) parts.push(`- 与我的关系：${formData.relationship}`);
+    if (formData.closeness) parts.push(`- 亲密程度：${formData.closeness}`);
+    if (formData.occupation) parts.push(`- 职业/身份：${formData.occupation}`);
+    if (formData.lifeStage) parts.push(`- 人生阶段：${formData.lifeStage}`);
+    if (formData.personality && formData.personality.length) parts.push(`- 性格标签：${formData.personality.join("、")}`);
+    if (formData.hobbies && formData.hobbies.length) parts.push(`- 兴趣爱好：${formData.hobbies.join("、")}`);
+    if (formData.materialPrefs && formData.materialPrefs.length) parts.push(`- 物质偏好：${formData.materialPrefs.join("、")}`);
+    if (formData.diet) parts.push(`- 饮食禁忌：${formData.diet}`);
+    if (formData.living) parts.push(`- 居住情况：${formData.living}`);
+    if (formData.taboos) parts.push(`- ⚠️ 禁忌/雷区：${formData.taboos}`);
+
+    parts.push("\n## 送礼场景");
+    if (formData.occasion) parts.push(`- 送礼场合：${formData.occasion}`);
+    parts.push(`- 预算范围：${budgetText(formData.budget)}`);
+    if (formData.giftType && formData.giftType.length) parts.push(`- 期望礼物类型：${formData.giftType.join("、")}`);
+    if (formData.delivery) parts.push(`- 送达方式：${formData.delivery}`);
+    parts.push(`- 推荐数量：${formData.count || 5} 条`);
+
+    if (formData.personalIdea) parts.push(`\n## 个人想法\n${formData.personalIdea}`);
+    if (formData.supplement) parts.push(`\n## 补充信息\n${formData.supplement}`);
+
+    if (feedbackSummary) {
+      parts.push(`\n## 历史反馈摘要\n${feedbackSummary}`);
+    }
+
+    parts.push(`\n请推荐 ${formData.count || 5} 条礼物建议，严格按 JSON 格式返回。`);
+
+    return parts.join("\n");
+  }
+
+  function buildFeedbackSummary(recipientId) {
+    const pastRecs = state.history.filter(h => h.recipientId === recipientId);
+    if (!pastRecs.length) return null;
+    const accepted = [];
+    const rejected = [];
+    pastRecs.forEach(h => {
+      h.items.forEach(it => {
+        if (it.status === "accepted") accepted.push(it.name);
+        else if (it.status === "rejected") rejected.push(it.name);
+      });
+    });
+    const parts = [];
+    if (accepted.length) parts.push(`之前采纳过的礼物：${accepted.join("、")}（请避免重复推荐）`);
+    if (rejected.length) parts.push(`之前未采纳的礼物：${rejected.join("、")}（请避免推荐类似的）`);
+    return parts.length ? parts.join("\n") : null;
+  }
+
+  function parseDeepSeekResponse(content) {
+    if (!content) return null;
+    let cleaned = content.trim();
+    // 去除 markdown code fence
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
+    // 尝试提取 JSON
+    const jsonStart = cleaned.indexOf("{");
+    const jsonEnd = cleaned.lastIndexOf("}");
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    }
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.results && Array.isArray(parsed.results)) {
+        return parsed.results.map(g => ({
+          name: g.name || "未知礼物",
+          reason: g.reason || "这是一份用心的推荐",
+          priceRange: g.priceRange || budgetText(state.form.budget),
+          purchaseHint: g.purchaseHint || "可在电商平台搜索购买",
+          tags: Array.isArray(g.tags) ? g.tags : ["推荐"],
+          matchScore: typeof g.matchScore === "number" ? g.matchScore : 75,
+        }));
+      }
+    } catch (e) {
+      console.warn("JSON parse error:", e);
+    }
+    return null;
+  }
+
+  async function callDeepSeek(formData, feedbackSummary) {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("未配置 DeepSeek API Key");
+    const systemPrompt = buildSystemPrompt();
+    const userPrompt = buildUserPrompt(formData, feedbackSummary);
+
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2000,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`DeepSeek API ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    const results = parseDeepSeekResponse(content);
+    if (!results || results.length === 0) {
+      throw new Error("AI 返回数据解析失败");
+    }
+    return results;
+  }
+
+  /* ============================================================
+     API Key 输入模态（Key 缺失时引导，保存在本机 localStorage）
+     ============================================================ */
+  function openApiKeyModal(onSaved) {
+    openModal(`
+      <div class="sheet__handle"></div>
+      <div class="sheet__title">配置 DeepSeek API Key</div>
+      <div class="sheet__sub">Key 仅保存在<b style="color:var(--rose-d)">本机浏览器</b>（localStorage），不会上传或随文件分发</div>
+      <div class="field" style="margin-top:14px">
+        <div class="field__label"><span class="req">*</span>API Key</div>
+        <input class="input" id="apikey_input" type="password" placeholder="sk-..." autocomplete="off" />
+      </div>
+      <button class="btn btn--primary btn--block" data-action="save-apikey" style="margin-top:10px">${ICO.check}保存并继续</button>
+      <button class="btn btn--ghost btn--block" style="margin-top:10px" data-action="close-modal">稍后再说</button>
+    `);
+    state._apiKeyCallback = onSaved || null;
+    setTimeout(() => { const el = $("#apikey_input"); if (el) el.focus(); }, 350);
+  }
+
+  function saveApiKey() {
+    const el = $("#apikey_input");
+    const val = el ? el.value.trim() : "";
+    if (!val || !val.startsWith("sk-")) {
+      toast("请输入有效的 API Key（以 sk- 开头）");
+      return;
+    }
+    lsSet(STORAGE_KEYS.apiKey, val);
+    const cb = state._apiKeyCallback;
+    state._apiKeyCallback = null;
+    closeModal();
+    toast("API Key 已保存到本机", "ok");
+    if (cb) cb();
+  }
+
+  /* ============================================================
+     Loader 状态管理
+     ============================================================ */
+  let loaderTextTimer = null;
+  function showLoader(text) {
+    const txtEl = $(".loader__text");
+    if (txtEl) txtEl.textContent = text || "正在为你挑选礼物…";
+    loaderEl.classList.add("is-open");
+  }
+
+  function updateLoaderText(text) {
+    const txtEl = $(".loader__text");
+    if (txtEl) txtEl.textContent = text;
+  }
+
+  function hideLoader() {
+    loaderEl.classList.remove("is-open");
+    if (loaderTextTimer) {
+      clearInterval(loaderTextTimer);
+      loaderTextTimer = null;
+    }
+  }
+
+  function startLoaderAnimation() {
+    const messages = [
+      "正在分析 TA 的画像…",
+      "匹配性格与爱好…",
+      "筛选预算范围内的礼物…",
+      "AI 正在生成推荐方案…",
+      "精心撰写推荐理由…",
+    ];
+    let idx = 0;
+    updateLoaderText(messages[0]);
+    loaderTextTimer = setInterval(() => {
+      idx = (idx + 1) % messages.length;
+      updateLoaderText(messages[idx]);
+    }, 2000);
   }
 
   /* ---------- 完整度计算 ---------- */
@@ -350,7 +695,7 @@
   }
 
   /* ============================================================
-     生成推荐
+     本地礼物池兜底逻辑（AI 失败时使用）
      ============================================================ */
   function budgetBand(v) {
     if (v <= 50) return { min: 0, max: 50 };
@@ -361,7 +706,7 @@
     return { min: 1000, max: 3000 };
   }
 
-  function generateResults() {
+  function generateResultsLocal() {
     const f = state.form;
     const band = budgetBand(f.budget);
     const count = f.count || 5;
@@ -395,28 +740,22 @@
       });
     }
 
-    return picks.map(decorateGift);
+    return picks.map(g => {
+      const lo = Math.max(g.min, Math.floor(band.min * 0.8));
+      const hi = Math.min(g.max, Math.ceil(band.max * 1.1));
+      const hints = ["京东 / 天猫", "线下精品店", "品牌官方定制", "小红书好物馆", "线下商场"];
+      return {
+        name: g.name,
+        matchScore: g._score,
+        priceRange: `¥${lo} – ${hi}`,
+        purchaseHint: hints[Math.floor(Math.random() * hints.length)],
+        tags: g.tags,
+        reason: buildReasonLocal(g, f),
+      };
+    });
   }
 
-  function decorateGift(g) {
-    const f = state.form;
-    const band = budgetBand(f.budget);
-    const lo = Math.max(g.min, Math.floor(band.min * 0.8));
-    const hi = Math.min(g.max, Math.ceil(band.max * 1.1));
-    const priceRange = `¥${lo} – ${hi}`;
-    const hints = ["京东 / 天猫", "线下精品店", "品牌官方定制", "小红书好物馆", "线下商场"];
-    const purchaseHint = hints[Math.floor(Math.random() * hints.length)];
-    return {
-      name: g.name,
-      matchScore: g._score,
-      priceRange,
-      purchaseHint,
-      tags: g.tags,
-      reason: buildReason(g, f),
-    };
-  }
-
-  function buildReason(g, f) {
+  function buildReasonLocal(g, f) {
     const parts = [];
     const rel = f.relationship;
     const occ = f.occasion || "送礼";
@@ -442,7 +781,10 @@
     return parts.join("");
   }
 
-  function handleGenerate() {
+  /* ============================================================
+     生成推荐（AI + 本地兜底）
+     ============================================================ */
+  async function handleGenerate() {
     const { reqMissing } = computeCompleteness();
     if (reqMissing > 0) {
       toast(`还差 ${reqMissing} 个必填项`);
@@ -452,24 +794,69 @@
       openReward(true);
       return;
     }
+    // Key 缺失：先引导输入（本机保存），输入成功后继续本次生成
+    if (!getApiKey()) {
+      openApiKeyModal(() => handleGenerate());
+      return;
+    }
+
+    // 扣减额度
     state.quota -= 1;
     state.totalGenerated += 1;
     addFlow("use", `生成推荐 · ${state.form.name || "对象"}`, -1);
+    persistQuota();
+    persistFlow();
+    persistStats();
+    updateQuotaUI();
 
-    loaderEl.classList.add("is-open");
-    setTimeout(() => {
-      loaderEl.classList.remove("is-open");
-      state.lastResults = generateResults();
+    // 显示 loader
+    showLoader("正在分析 TA 的画像…");
+    startLoaderAnimation();
+
+    // 记录当前的表单快照（用于写入历史）
+    const formSnapshot = { ...state.form };
+    const recipientId = state.currentRecipientId;
+    const recipientName = state.form.name || "TA";
+    const feedbackSummary = recipientId ? buildFeedbackSummary(recipientId) : null;
+
+    try {
+      const results = await callDeepSeek(formSnapshot, feedbackSummary);
+      state.lastResults = results;
       state.lastFeedback = {};
+      state.lastResultContext = {
+        recipientId,
+        recipientName,
+        occasion: formSnapshot.occasion,
+        budget: formSnapshot.budget,
+        formSnapshot,
+      };
+      hideLoader();
       renderResult();
       openResult();
-      // 插屏频控：首次推荐不插，每会话最多 2 次
       state.interstitialCount += 1;
       if (state.interstitialCount > 1 && state.interstitialCount <= 3) {
         setTimeout(openInterstitial, 600);
       }
       updateQuotaUI();
-    }, 1900);
+    } catch (err) {
+      console.error("DeepSeek API error:", err);
+      hideLoader();
+      // 本地兜底
+      toast("AI 服务暂不可用，使用本地推荐", "info");
+      const results = generateResultsLocal();
+      state.lastResults = results;
+      state.lastFeedback = {};
+      state.lastResultContext = {
+        recipientId,
+        recipientName,
+        occasion: formSnapshot.occasion,
+        budget: formSnapshot.budget,
+        formSnapshot,
+      };
+      renderResult();
+      openResult();
+      updateQuotaUI();
+    }
   }
 
   /* ============================================================
@@ -479,7 +866,7 @@
     const screen = $(`.screen[data-screen="result"]`);
     const savedScroll = screen ? screen.scrollTop : 0;
     const results = state.lastResults || [];
-    const avg = results.length ? Math.round(results.reduce((s, r) => s + r.matchScore, 0) / results.length) : 0;
+    const avg = results.length ? Math.round(results.reduce((s, r) => s + (r.matchScore || 0), 0) / results.length) : 0;
     const f = state.form;
 
     const cards = results.map((g, i) => {
@@ -493,8 +880,8 @@
           </div>
           <div class="gift-card__main">
             <div class="gift-card__name">${escape(g.name)}</div>
-            <div class="gift-card__price">${ICO.coin}${g.priceRange}</div>
-            <div class="gift-card__tags">${g.tags.map(t => `<span class="tag ${tagClass(t)}">${t}</span>`).join("")}</div>
+            <div class="gift-card__price">${ICO.coin}${escape(g.priceRange)}</div>
+            <div class="gift-card__tags">${(g.tags || []).map(t => `<span class="tag ${tagClass(t)}">${escape(t)}</span>`).join("")}</div>
           </div>
         </div>
         <div class="note">
@@ -540,10 +927,45 @@
       state.acceptedTotal += 1;
       toast("已记录采纳，将优化后续推荐", "ok");
     }
+    persistStats();
     renderResult();
-    // 滚动保持位置
     const screen = $(`.screen[data-screen="result"]`);
     screen.scrollTop = screen.scrollTop;
+  }
+
+  /* ============================================================
+     结果页关闭时：将推荐结果写入历史
+     ============================================================ */
+  function saveResultsToHistory() {
+    if (!state.lastResults || state.lastResults.length === 0) return;
+    if (!state.lastResultContext) return;
+
+    const ctx = state.lastResultContext;
+    const now = new Date();
+    const dateStr = String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+
+    const items = state.lastResults.map((g, i) => {
+      const fb = state.lastFeedback[i];
+      return {
+        name: g.name,
+        status: fb === "accepted" ? "accepted" : fb === "rejected" ? "rejected" : "pending",
+      };
+    });
+
+    const historyEntry = {
+      recipientId: ctx.recipientId,
+      recipientName: ctx.recipientName,
+      date: dateStr,
+      occasion: ctx.occasion || "送礼",
+      budget: ctx.budget || 300,
+      items,
+    };
+
+    state.history = [historyEntry, ...state.history];
+    persistHistory();
+    state.lastResults = null;
+    state.lastResultContext = null;
+    state.lastFeedback = {};
   }
 
   /* ============================================================
@@ -558,7 +980,7 @@
         <div class="avatar" style="background:${avatarGrad(r.colorIdx)}">${escape(r.initial)}</div>
         <div class="list-item__main">
           <div class="list-item__name">${escape(r.name)} <span style="font-size:11px;color:var(--ink-3);font-weight:400">· ${escape(r.relationship)}</span></div>
-          <div class="list-item__meta">${escape(r.gender)} · ${escape(r.ageRange)} · ${r.hobbies.slice(0, 2).join("、") || "暂无标签"}</div>
+          <div class="list-item__meta">${escape(r.gender)} · ${escape(r.ageRange)} · ${(r.hobbies || []).slice(0, 2).join("、") || "暂无标签"}</div>
         </div>
         <div class="list-item__end">
           <div class="num">${completeness}%</div>
@@ -597,12 +1019,14 @@
     const screen = $(`.screen[data-screen="history"]`);
     const groups = {};
     state.history.forEach(h => {
-      const key = h.recipientName;
+      const key = h.recipientName || "未知对象";
       (groups[key] = groups[key] || []).push(h);
     });
     const html = Object.entries(groups).map(([name, items]) => {
-      const cards = items.map(h => `
-        <div class="hist-card" data-action="reuse-history" data-id="${h.recipientId}">
+      const cards = items.map((h, idx) => {
+        const realIdx = state.history.indexOf(h);
+        return `
+        <div class="hist-card" data-action="reuse-history" data-id="${h.recipientId || ""}">
           <div class="hist-card__top">
             <div class="hist-card__who">${escape(h.occasion)} · ${budgetText(h.budget)}</div>
             <div class="hist-card__date">${escape(h.date)}</div>
@@ -610,13 +1034,14 @@
           <div class="hist-card__items">
             ${h.items.map(it => `<div class="hist-item"><span class="hist-item__dot" data-s="${it.status}"></span>${escape(it.name)}${it.status === "accepted" ? ' <span style="color:var(--sage);font-size:11px">已采纳</span>' : it.status === "rejected" ? ' <span style="color:var(--terra);font-size:11px">未采纳</span>' : ""}</div>`).join("")}
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
       return `<div class="hist-group"><div class="hist-group__label">${escape(name)}</div>${cards}</div>`;
     }).join("");
 
     screen.innerHTML = `
       <div class="h-eyebrow">Recommendation History</div>
-      <div class="section__head" style="margin-top:4px"><div class="h-title">推荐历史</div></div>
+      <div class="section__head" style="margin-top:4px"><div class="h-title">推荐历史 (${state.history.length})</div></div>
       ${html || '<div class="h-sub">暂无历史记录</div>'}
     `;
   }
@@ -719,6 +1144,8 @@
         clearInterval(t);
         state.quota += 3;
         addFlow("add", "观看激励视频", 3);
+        persistQuota();
+        persistFlow();
         updateQuotaUI();
         closeModal();
         toast("已到账 +3 次额度", "ok");
@@ -744,6 +1171,8 @@
   function shareDone() {
     state.quota += 2;
     addFlow("add", "分享好友奖励", 2);
+    persistQuota();
+    persistFlow();
     updateQuotaUI();
     closeModal();
     toast("已到账 +2 次额度", "ok");
@@ -769,42 +1198,72 @@
     }, 1000);
   }
 
+  /* ---------- 新建对象（完整字段） ---------- */
   function openNewRecipient() {
     const seg = (field, options, multi = false) => options.map(o =>
-      `<button class="seg__btn" data-nr-seg="${field}" data-val="${o}" data-multi="${multi}">${o}</button>`).join("");
+      `<button class="seg__btn" data-nr-seg="${field}" data-val="${o}" data-multi="${multi}">${multi ? '<span class="check">' + ICO.check + '</span>' : ''}${o}</button>`).join("");
+
     openModal(`
       <div class="sheet__handle"></div>
       <div class="sheet__title">新建送礼对象</div>
       <div class="sheet__sub">填写越多，未来推荐越准</div>
+
       <div class="field" style="margin-top:14px">
         <div class="field__label"><span class="req">*</span>昵称</div>
-        <input class="input" id="nrName" placeholder="如：老张、妹妹" />
+        <input class="input" id="nr_name" placeholder="如：老张、妹妹" />
       </div>
-      <div class="field"><div class="field__label"><span class="req">*</span>关系</div><div class="seg">${seg("relationship", DICT.relationship)}</div></div>
-      <div class="field"><div class="field__label"><span class="req">*</span>性别</div><div class="seg">${seg("gender", DICT.gender)}</div></div>
-      <div class="field"><div class="field__label"><span class="req">*</span>年龄段</div><div class="seg">${seg("ageRange", DICT.ageRange)}</div></div>
-      <div class="field"><div class="field__label">性格（可多选）</div><div class="seg seg--multi">${seg("personality", DICT.personality, true)}</div></div>
-      <div class="field"><div class="field__label">爱好（可多选）</div><div class="seg seg--multi">${seg("hobbies", DICT.hobbies, true)}</div></div>
+      <div class="field"><div class="field__label"><span class="req">*</span>关系</div><div class="seg">${seg("nr_relationship", DICT.relationship)}</div></div>
+      <div class="field"><div class="field__label"><span class="req">*</span>性别</div><div class="seg">${seg("nr_gender", DICT.gender)}</div></div>
+      <div class="field"><div class="field__label"><span class="req">*</span>年龄段</div><div class="seg">${seg("nr_ageRange", DICT.ageRange)}</div></div>
+      <div class="field"><div class="field__label">亲密程度</div><div class="seg">${seg("nr_closeness", DICT.closeness)}</div></div>
+      <div class="field"><div class="field__label">职业 / 身份</div><input class="input" id="nr_occupation" placeholder="如：产品经理、学生" /></div>
+      <div class="field"><div class="field__label">人生阶段</div><div class="seg">${seg("nr_lifeStage", DICT.lifeStage)}</div></div>
+      <div class="field"><div class="field__label">性格标签（可多选）</div><div class="seg seg--multi">${seg("nr_personality", DICT.personality, true)}</div></div>
+      <div class="field"><div class="field__label">兴趣爱好（可多选）</div><div class="seg seg--multi">${seg("nr_hobbies", DICT.hobbies, true)}</div></div>
+      <div class="field"><div class="field__label">物质偏好（可多选）</div><div class="seg seg--multi">${seg("nr_materialPrefs", DICT.materialPrefs, true)}</div></div>
+      <div class="field"><div class="field__label">饮食禁忌</div><div class="seg">${seg("nr_diet", DICT.diet)}</div></div>
+      <div class="field"><div class="field__label">居住情况</div><div class="seg">${seg("nr_living", DICT.living)}</div></div>
+      <div class="field"><div class="field__label">⚠️ 禁忌 / 雷区</div><textarea class="textarea" id="nr_taboos" placeholder="颜色 / 数字 / 寓意 / 品类"></textarea></div>
+
       <button class="btn btn--primary btn--block" data-action="save-recipient">${ICO.check}保存对象</button>
     `);
-    state.nrDraft = { name: "", relationship: "", gender: "", ageRange: "", personality: [], hobbies: [] };
+
+    state.nrDraft = {
+      nr_name: "", nr_relationship: "", nr_gender: "", nr_ageRange: "",
+      nr_closeness: "", nr_occupation: "", nr_lifeStage: "",
+      nr_personality: [], nr_hobbies: [], nr_materialPrefs: [],
+      nr_diet: "", nr_living: "", nr_taboos: "",
+    };
   }
 
   function saveRecipient() {
     const d = state.nrDraft;
-    if (!d.name || !d.relationship || !d.gender || !d.ageRange) {
+    if (!d.nr_name || !d.nr_relationship || !d.nr_gender || !d.nr_ageRange) {
       toast("请完成必填项");
       return;
     }
-    const id = "r" + (state.recipients.length + 1) + "_" + Date.now().toString(36).slice(-3);
-    const initial = d.name.slice(0, 1);
+    const id = "r_" + Date.now().toString(36);
+    const initial = d.nr_name.slice(0, 1);
     state.recipients = [{
-      id, name: d.name, initial,
-      gender: d.gender, ageRange: d.ageRange, relationship: d.relationship,
-      personality: d.personality, hobbies: d.hobbies, materialPrefs: [],
-      diet: "", living: "", occupation: "", lifeStage: "", closeness: "", taboos: "",
-      importantDates: [], colorIdx: state.recipients.length,
+      id,
+      name: d.nr_name,
+      initial,
+      gender: d.nr_gender,
+      ageRange: d.nr_ageRange,
+      relationship: d.nr_relationship,
+      closeness: d.nr_closeness || "",
+      occupation: d.nr_occupation || "",
+      lifeStage: d.nr_lifeStage || "",
+      personality: d.nr_personality || [],
+      hobbies: d.nr_hobbies || [],
+      materialPrefs: d.nr_materialPrefs || [],
+      diet: d.nr_diet || "",
+      living: d.nr_living || "",
+      taboos: d.nr_taboos || "",
+      importantDates: [],
+      colorIdx: state.recipients.length,
     }, ...state.recipients];
+    persistRecipients();
     closeModal();
     toast("对象已创建", "ok");
     if (state.route === "recipients") renderRecipients();
@@ -847,16 +1306,25 @@
       case "apply-template": applyTemplate(actEl.dataset.key); break;
       case "generate": handleGenerate(); break;
       case "feedback": handleFeedback(+actEl.dataset.idx, actEl.dataset.kind); break;
-      case "regenerate": handleGenerate(); break;
-      case "close-result": closeResult(); break;
+      case "regenerate":
+        // 先保存上一批结果到历史
+        saveResultsToHistory();
+        handleGenerate();
+        break;
+      case "close-result":
+        saveResultsToHistory();
+        closeResult();
+        break;
       case "close-modal": closeModal(); break;
       case "reuse-history": {
         const id = actEl.dataset.id;
         go("recommend");
         if (id) setTimeout(() => selectRecipient(id), 60);
+        toast("已载入对象画像，可重新生成推荐", "ok");
         break;
       }
       case "save-recipient": saveRecipient(); break;
+      case "save-apikey": saveApiKey(); break;
       case "toast-nav": toast("原型演示：此入口已规划"); break;
     }
   });
@@ -873,7 +1341,12 @@
       }
       refreshCompleteness();
     }
-    if (el.id === "nrName") state.nrDraft.name = el.value;
+    // 新建对象模态中的输入
+    if (el.id === "nrName" || (el.id && el.id.startsWith("nr_"))) {
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+        state.nrDraft[el.id] = el.value;
+      }
+    }
   });
 
   // 段选择 / 多选
@@ -898,7 +1371,9 @@
     // 新建对象模态内段选择
     const nrSeg = e.target.closest("[data-nr-seg]");
     if (nrSeg) {
-      const field = nrSeg.dataset.nrSeg, val = nrSeg.dataset.val, multi = nrSeg.dataset.multi === "true";
+      const field = nrSeg.dataset.nrSeg; // e.g. "nr_relationship"
+      const val = nrSeg.dataset.val;
+      const multi = nrSeg.dataset.multi === "true";
       if (multi) {
         const arr = state.nrDraft[field] || [];
         const i = arr.indexOf(val);
@@ -907,28 +1382,26 @@
       } else {
         state.nrDraft[field] = state.nrDraft[field] === val ? "" : val;
       }
-      nrSeg.setAttribute("data-active", "true");
       $$(`[data-nr-seg="${field}"]`).forEach(b => {
-        const on = multi ? state.nrDraft[field].includes(b.dataset.val) : state.nrDraft[field] === b.dataset.val;
+        const on = multi ? (state.nrDraft[field] || []).includes(b.dataset.val) : state.nrDraft[field] === b.dataset.val;
         b.setAttribute("data-active", on);
-        if (multi) b.classList.toggle("seg--multi__btn", true);
+        if (multi) {
+          if (on) {
+            b.style.background = "var(--rose-bg)";
+            b.style.color = "var(--rose-d)";
+            b.style.borderColor = "var(--rose-l)";
+          } else {
+            b.style.background = "";
+            b.style.color = "";
+            b.style.borderColor = "";
+          }
+        }
       });
-      if (multi) {
-        $$(`[data-nr-seg="${field}"]`).forEach(b => {
-          const on = state.nrDraft[field].includes(b.dataset.val);
-          b.style.background = on ? "var(--rose-bg)" : "";
-          b.style.color = on ? "var(--rose-d)" : "";
-          b.style.borderColor = on ? "var(--rose-l)" : "";
-        });
-      }
     }
   });
 
-  // 阻止 range 的 input 触发 refreshCompleteness 之外的重渲染（已处理）
-
   /* ---------- 初始化 ---------- */
   function renderGenerateDock() {
-    // 生成按钮浮于 tabBar 之上，仅推荐页可见
     let dock = $("#genDock");
     if (!dock) {
       dock = document.createElement("div");
@@ -956,6 +1429,9 @@
         state.dailyClaimed = true;
         state.quota += 1;
         addFlow("add", "每日登录奖励", 1);
+        persistQuota();
+        persistFlow();
+        persistDailyClaimed();
         updateQuotaUI();
         toast("每日登录 +1 次额度", "ok");
       }
